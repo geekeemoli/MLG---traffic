@@ -4,6 +4,7 @@
 import os
 import csv
 import math
+import numbers
 from shapely.geometry import box
 from shapely.strtree import STRtree
 
@@ -37,23 +38,28 @@ def get_density(G, csv_path=None):
         return G
 
     for _, data in G.nodes(data=True):
-        data['pop_density'] = 0.0
+        data['pop_density'] = -1
+        data['prvic'] = 1
 
     geoms = []
-    geom_id_to_node = {}
+    # map tree index -> node id
+    index_to_node = []
     for n, data in G.nodes(data=True):
         geom = data.get("geometry")
         if geom is None:
             print(f'node {n} does not have geometry')
             continue
         geoms.append(geom)
-        geom_id_to_node[id(geom)] = n
+        index_to_node.append(n)
 
     if not geoms:
         print("No geometries found on nodes; nothing to index.")
         return G
 
     tree = STRtree(geoms)
+
+    # map geometry id -> index for Shapely versions that return geometry objects from query
+    geom_id_to_index = {id(g): idx for idx, g in enumerate(geoms)}
 
     if csv_path is None:
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -64,8 +70,18 @@ def get_density(G, csv_path=None):
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             lon_field, lat_field, pop_field = reader.fieldnames[:3]
-
+            # total_lines = sum(1 for _ in csvfile)
+            # print(f'total lines in {csv_path}: {total_lines}')
+            # stevilo vrstic: 17034412 (aut_general_2020)
+            #kandidatov = 0
+            skupno = 0
+            unikatnih = 0
+            i = 0
             for row in reader:
+                #print(i)
+                if i%100000 == 0:
+                    print(f'we are on index: {i}')
+                i += 1
                 lon = float(row[lon_field])
                 lat = float(row[lat_field])
                 val = float(row[pop_field])
@@ -73,26 +89,66 @@ def get_density(G, csv_path=None):
                 tile = get_tile(lon, lat)
                 tile_geom = box(tile["west"], tile["south"], tile["east"], tile["north"])
 
-                candidates = tree.query(tile_geom) # query spatial index → candidate geometries
-
-                for cand in candidates:
-                    # map geometry back to node id
-                    n = geom_id_to_node[id(cand)]
+                # get list of indices of candidate geometries from the spatial index
+                # Some Shapely versions provide query_items (returns indices), others provide query (returns geometries or indices).
+                if hasattr(tree, "query_items"):
+                    candidate_indices = list(tree.query_items(tile_geom))
+                else:
+                    candidates = tree.query(tile_geom)
+                    # map geometries or numeric indices back to indices (robust across shapely versions)
+                    candidate_indices = []
+                    for cand in candidates:
+                        # cand may be a geometry object or an integer index (numpy.int64)
+                        if isinstance(cand, numbers.Integral):
+                            candidate_indices.append(int(cand))
+                        else:
+                            idx = geom_id_to_index.get(id(cand))
+                            if idx is not None:
+                                candidate_indices.append(idx)
+                
+                #if len(candidate_indices):
+                    #kandidatov += len(candidate_indices)
+                    #print(f'we actualy have candidates: {len(candidate_indices)}')
+                #print(f'in row {i} there are {len(candidate_indices)} candidates')              
+                for idx in candidate_indices:
+                    n = index_to_node[idx]
+                    cand = geoms[idx]
                     data = G.nodes[n]
 
                     if cand.intersects(tile_geom):
+                        skupno += 1
+                        if  data['prvic'] == 1:
+                            unikatnih += 1
+                            data['prvic'] = 0
+                        
                         data['pop_density'] = max(data['pop_density'], val) # if the road intersects with more then one tile
-
+                            
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Population CSV not found at {csv_path}; please pass csv_path explicitly"
         )
 
+    #print(f'kandidatov zadetkov: {kandidatov}')
+    print(f'skupno zadetkov: {skupno}')
+    print(f'unikatnih zadetkov: {unikatnih}')
+    
+    nezadetih = 0
+    for n, data in G.nodes(data=True):
+        if data.get('pop_density') == -1:
+            if nezadetih % 50 == 0:
+                print(data.get('geometry'))
+            nezadetih += 1
+    
+    print(f'dejansko nismo zadeli {nezadetih} cest')
+    #824
+    
     return G
 
 
 def get_tile(lon_center_deg, lat_center_deg):
-    half_ddeg = 1.0 / 7200.0
+    #half_ddeg = 1.0 / 7200.0 #nezadetih: 824 (NS_m=30.92m  EW_m=21.48m)
+    #half_ddeg = 1.0 / 6000.0 #nezadetih: 599 (NS_m=37.11m  EW_m=25.78m => NS dodatnih 3.5m, 2m)
+    half_ddeg = 1.0 / 5000.0 #nezadetih: 413 (NS_m=44.53m  EW_m=30.93m => NS dodatnih 7m, EW dodatne 4.5m)
 
     south = lat_center_deg - half_ddeg
     north = lat_center_deg + half_ddeg

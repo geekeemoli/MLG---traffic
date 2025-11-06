@@ -47,29 +47,48 @@ def get_density(G, csv_path=None):
     
     try:
         with open(csv_path, newline='', encoding='utf-8') as csvfile:
+            print('file opened')
+
+            # count total lines quickly (includes header), then rewind for csv.DictReader
+            # total_lines = sum(1 for _ in csvfile)
+            # print(f'total lines in {csv_path}: {total_lines}')
+            # csvfile.seek(0)
+            # stevilo vrstic: 17034413
             reader = csv.DictReader(csvfile)
             lon_field, lat_field, pop_field = reader.fieldnames[:3]
+            print(f'{lon_field}, {lat_field}, {pop_field}')
 
+            i = 0
             for row in reader:
+                i += 1
+                
                 lon = float(row[lon_field])
                 lat = float(row[lat_field])
                 val = float(row[pop_field])
+                #print(f'{lon}, {lat}, {val}')
                 
                 tile = get_tile(lon,lat)
+                #print(f'{tile["west"]}, {tile["south"]}, {tile["east"]}, {tile["north"]}')
+                
                 tile_geom = box(tile["west"], tile["south"], tile["east"], tile["north"])
                 
+                j = 0
                 for n, data in G.nodes(data=True):
+                    j += 1
+                    print(f'smo v vrstici {i}, na vozliscu {j}')
                     geom = data.get("geometry")
                     if geom is None:
-                        print(f'node {n} does not have geometry')
+                        print(f'node {n} does not have geometry!!!!!!')
                         continue
-                    
+                    #else:
+                        #print(f'vozlise {n} ima geometrijo#####################')
                     if geom.intersects(tile_geom):
+                        print('---------------------------------we got an intersection-------------------------------')
                         data['pop_density'] = max(data['pop_density'], val) # if the road intersects with more then one tile
                     
                     
     except FileNotFoundError:
-        raise FileNotFoundError(f"Population CSV not found at {csv_path}; please pass csv_path explicitly")
+        raise FileNotFoundError(f'Population CSV not found at {csv_path}; please pass csv_path explicitly')
 
     return G
 
@@ -96,5 +115,5 @@ def get_tile(lon_center_deg, lat_center_deg):
 
 if __name__ == '__main__':
     print('This module provides get_density(G, csv_path=None) to annotate graphs with population density (atribute pop_density).')
-    
-    
+
+
