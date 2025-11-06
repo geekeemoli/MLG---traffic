@@ -38,7 +38,7 @@ def get_density(G, csv_path=None):
         return G
 
     for _, data in G.nodes(data=True):
-        data['pop_density'] = -1
+        data['pop_density'] = 0
         data['prvic'] = 1
 
     geoms = []
@@ -73,15 +73,16 @@ def get_density(G, csv_path=None):
             # total_lines = sum(1 for _ in csvfile)
             # print(f'total lines in {csv_path}: {total_lines}')
             # stevilo vrstic: 17034412 (aut_general_2020)
-            #kandidatov = 0
+
             skupno = 0
             unikatnih = 0
-            i = 0
+            
+            i=0
             for row in reader:
-                #print(i)
                 if i%100000 == 0:
                     print(f'we are on index: {i}')
                 i += 1
+                
                 lon = float(row[lon_field])
                 lat = float(row[lat_field])
                 val = float(row[pop_field])
@@ -105,11 +106,7 @@ def get_density(G, csv_path=None):
                             idx = geom_id_to_index.get(id(cand))
                             if idx is not None:
                                 candidate_indices.append(idx)
-                
-                #if len(candidate_indices):
-                    #kandidatov += len(candidate_indices)
-                    #print(f'we actualy have candidates: {len(candidate_indices)}')
-                #print(f'in row {i} there are {len(candidate_indices)} candidates')              
+                             
                 for idx in candidate_indices:
                     n = index_to_node[idx]
                     cand = geoms[idx]
@@ -128,19 +125,17 @@ def get_density(G, csv_path=None):
             f"Population CSV not found at {csv_path}; please pass csv_path explicitly"
         )
 
-    #print(f'kandidatov zadetkov: {kandidatov}')
     print(f'skupno zadetkov: {skupno}')
     print(f'unikatnih zadetkov: {unikatnih}')
     
     nezadetih = 0
     for n, data in G.nodes(data=True):
-        if data.get('pop_density') == -1:
+        if data.get('prvic') == 1:
             if nezadetih % 50 == 0:
                 print(data.get('geometry'))
             nezadetih += 1
     
     print(f'dejansko nismo zadeli {nezadetih} cest')
-    #824
     
     return G
 
