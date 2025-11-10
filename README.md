@@ -64,96 +64,56 @@ Data splits & protocol
 - Use class weighting or oversampling if the critical class is rare.
 - Provide per-city and aggregated metrics in results.
 
-## 6. Implementation & dependencies
+# Project Progress
 
-Languages and libraries (suggested)
-- Python 3.8+
-- PyTorch for model implementation
-- PyTorch Geometric (PyG) or DGL for graph operations
-- OSMnx for street network extraction
-- rasterio / GDAL for HRSL raster processing
-- pandas, numpy, scikit-learn for standard data handling and metrics
+Preparing content for the final Medium article.
 
-Example packages to include in `requirements.txt` (pin versions as needed)
-- torch
-- torch-geometric (or dgl)
-- osmnx
-- rasterio
-- pandas
-- numpy
-- scikit-learn
+### 1. Detecting Traffic Jams
+See [`analyse_utd19`](analyse_utd19).
 
-## 7. Repository structure (recommended)
+The UTD19 dataset contains the measurements from thousands of detectors in different cities around the world. Each detector gives us the *occupancy* and *flow* over time for one or multiple days. See the example below:
 
-- `data/` — raw downloads and processed datasets (do not commit large raw files; provide download scripts)
-- `src/` — code: `data/` (preprocessing), `models/` (GAT and helpers), `train.py`, `evaluate.py`
-- `notebooks/` — EDA, preprocessing demonstrations and visualizations
-- `configs/` — experiment configuration files (YAML)
-- `experiments/` — saved checkpoints, logs, and evaluation outputs (gitignored large files)
-- `README.md` — this file
+<figure>
+    <img src="analyse_utd19/example_plot.png"
+         alt="Example graph"
+         width="500">
+    <figcaption>Figure 1 - Example graph of *occupancy* and *flow* during a single day.</figcaption>
+</figure>
 
-## 8. Getting started (quick)
+We detect traffic jams by looking at the **correlation** between the *occupancy* and *flow*. The assumption we make is that if no traffic jams occur, the traffic flow will be proportional (highly correlated) to the occupancy of the detectors. The opposite holds for detectors placed on roads which are prone to causing serious traffic jams.
 
-1) Create and activate a Python virtual environment (PowerShell):
+To eliminate noise, we use the moving averages of the signals with sliding window of size 3. Another observation is that most of the signals are not particularly useful, because they are during the night or non peak hours. Therefore, we only consider the data where occupancy is in the 66th upper percentile.
 
-```powershell
-python -m venv .venv; .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+```python
+# Compute moving averages for flow and occ
+df["flow_ma"] = df["flow"].rolling(window=N, min_periods=1).mean()
+df["occ_ma"] = df["occ"].rolling(window=N, min_periods=1).mean()
+
+# Compute the mask for the 66th percentile
+valid_ma_mask = df["occ_ma"] > df["occ"].quantile(0.66)
+
+# Calculate the correlation between flow and occupance
+correlation_ma = df.loc[valid_ma_mask, ["flow_ma", "occ_ma"]].corr().iloc[0, 1]
 ```
 
-2) Download data (example placeholder script):
+By calculating the correlation between *occupancy* and *flow*, we get a confidence score indicating how likely it is that a traffic jam occured, where negative values indicate traffic jams. See the following two examples:
 
-```powershell
-python src/data/download_osm.py --city "Ljubljana, Slovenia" --output data/raw/osm
-python src/data/download_hrsl.py --region "Slovenia" --output data/raw/hrsl
-# UTD19 requires following dataset-specific download instructions
-```
+<figure>
+    <img src="analyse_utd19/example_negative.png"
+         alt="Example graph"
+         width="500">
+    <figcaption>Figure 2 - Example where a traffic jam DID NOT occur.</figcaption>
+</figure>
 
-3) Preprocess and build graphs:
+<figure>
+    <img src="analyse_utd19/example_positive.png"
+         alt="Example graph"
+         width="500">
+    <figcaption>Figure 3 - Example where a traffic jam DID occur.</figcaption>
+</figure>
 
-```powershell
-python src/data/preprocess.py --osm data/raw/osm --hrsl data/raw/hrsl --traffic data/raw/utd19 --out_dir data/processed
-```
+### 2. Finding the Detectors on the map
+...
 
-4) Train (example):
-
-```powershell
-python src/train.py --config configs/gat_experiment.yaml
-```
-
-5) Evaluate:
-
-```powershell
-python src/evaluate.py --checkpoint experiments/checkpoint.pt --data_dir data/processed
-```
-
-Replace these example scripts with the actual script names when they exist in `src/`.
-
-## 9. Tips & edge cases
-
-- Handle missing traffic sensor data with masking or imputation.
-- Use graph sampling or localized minibatches for very large graphs (GraphSAGE-style neighborhoods, Cluster-GCN).
-- If population must be aggregated, try multiple radii around nodes to find the best mapping.
-
-## 10. Next steps (recommended)
-
-1. Add an exact `requirements.txt` with pinned package versions.
-2. Implement example scripts: `src/data/preprocess.py`, `src/train.py`, `src/evaluate.py` and simple configs in `configs/`.
-3. Provide a small sample dataset (synthetic or a subset) under `data/sample/` for quick demos and CI tests.
-4. Add a `LICENSE` file and contributor guidelines.
-
-## 11. Contact & license
-
-Project authors: Dario Vajda, Oliver Majer, Diego Bonaca
-
-University of Ljubljana
-
-License: (add license file, e.g., MIT or Apache-2.0)
-
----
-
-If you'd like, I can now:
-- commit a `requirements.txt` with suggested packages,
-- add minimal skeleton scripts for `preprocess.py`, `train.py` and `evaluate.py`,
-- or create a small synthetic sample dataset for a runnable example. Which would you prefer next?
+### 3. Mapping Population Density to the Graph
+...
