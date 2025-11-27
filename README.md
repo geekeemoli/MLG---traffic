@@ -113,7 +113,8 @@ By calculating the correlation between *occupancy* and *flow*, we get a confiden
 </figure>
 
 ### 2. Finding the Detectors on the map
-...
+The utd19_u.csv dataset contains detector records identified by detid. Additional geographic information (latitude and longitude) for each detector is provided in detectors_public.csv.
+Using this geo data, detectors are mapped to their corresponding road segments (nodes). Each road segment is then enriched with two attributes. Namely, has_detector (boolean) — indicates whether the segment has one or more detectors and detectors (list) — contains the list of associated detector IDs.  
 
 ### 3. Mapping Population Density to the Graph
-...
+This component maps high-resolution population tiles from a country-wide CSV onto a road-centric line-graph so that each road (a node in the line-graph) receives a per-road population value. The mapping uses road center points, restricts CSV processing to the city bounding box, assigns each road to the nearest CSV tile center, normalizes tile population by the number of roads in that tile, and applies distance-based thresholding and diagnostics to flag suspicious assignments.
