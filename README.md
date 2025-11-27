@@ -104,7 +104,7 @@ By calculating the correlation between *occupancy* and *flow*, we get a confiden
          width="500">
     <figcaption>Figure 2 - Example where a traffic jam DID NOT occur.</figcaption>
 </figure>
-
+<br />
 <figure>
     <img src="analyse_utd19/example_positive.png"
          alt="Example graph"

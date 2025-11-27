@@ -1,3 +1,6 @@
 analyse_utd19/*/**/*.png
 analyse_utd19/sampled_utd19.csv
 cache
+data/population_data/aut_general_2020_csv.zip
+data/population_data/aut_general_2020.csv
+src/__pycache__

@@ -270,7 +270,7 @@
           "15.4777777779349783",
           "47.0322222222026625"
         ],
-        "tile_distance_m": 95.40269879147323,
+        "tile_distance_m": 95.40269879147324,
         "pop_density": 0.0,
         "raw_tile_pop": 4.645459175109863,
         "assigned_by": "nearest|too_far"
@@ -295,7 +295,7 @@
           "15.4777777779349783",
           "47.0322222222026625"
         ],
-        "tile_distance_m": 89.06566478395784,
+        "tile_distance_m": 89.06566478395786,
         "pop_density": 0.0,
         "raw_tile_pop": 4.645459175109863,
         "assigned_by": "nearest|too_far"
@@ -620,7 +620,7 @@
           "15.4475000001571754",
           "47.0722222222026971"
         ],
-        "tile_distance_m": 89.70914856344793,
+        "tile_distance_m": 89.70914856344794,
         "pop_density": 0.0,
         "raw_tile_pop": 4.645459175109863,
         "assigned_by": "nearest|too_far"
@@ -2195,7 +2195,7 @@
           "15.3716666668237814",
           "47.0322222222026625"
         ],
-        "tile_distance_m": 174.42252906477745,
+        "tile_distance_m": 174.42252906477748,
         "pop_density": 0.0,
         "raw_tile_pop": 4.645459175109863,
         "assigned_by": "nearest|too_far"
@@ -3120,7 +3120,7 @@
           "15.467500000157191",
           "47.112499999980507"
         ],
-        "tile_distance_m": 125.68942408671805,
+        "tile_distance_m": 125.68942408671806,
         "pop_density": 0.0,
         "raw_tile_pop": 4.645459175109863,
         "assigned_by": "nearest|too_far"
