@@ -3,4 +3,8 @@ analyse_utd19/sampled_utd19.csv
 cache
 data/population_data/aut_general_2020_csv.zip
 data/population_data/aut_general_2020.csv
+data/traffic_data/utd19_u.csv
 src/__pycache__
+analyse_utd19/__pycache__
+analyse_utd19/sampled_correlations
+analyse_utd19/utd_samples

@@ -4,6 +4,8 @@ import math
 import pandas as pd
 from datetime import timedelta
 from tqdm import tqdm
+import argparse
+from sample import sample_utd_by_city
 
 # Load all detector IDs
 def load_all_detector_ids(csv_path: str):
@@ -17,10 +19,6 @@ def load_all_detector_ids(csv_path: str):
                 detector_ids.add(det_id)
 
     return list(detector_ids)
-
-# detector_ids = load_all_detector_ids("../../detectors.csv")
-detector_ids = load_all_detector_ids("sampled_utd19.csv")
-detector_ids.sort()
 
 # Load UTD data for a given detector ID
 def load_utd_data(csv_path: str, loaded_data, detector_id: str):
@@ -48,7 +46,6 @@ def load_utd_data(csv_path: str, loaded_data, detector_id: str):
             # i += 1
 
     return data
-
 
 def plot_flow_occ_over_time(data: list[dict], out_path: str):
     """
@@ -213,38 +210,82 @@ def plot_flow_occ_over_time_with_ma(data: list[dict], out_path: str, N: int, plo
 
     return correlation, correlation_ma
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Calculate correlations between flow and occupancy for UTD data.")
+    parser.add_argument("--utd_path", type=str, default="../data/traffic_data/utd19_u.csv", help="Path to the UTD CSV file.")
+    parser.add_argument("--sampled_path", type=str, default="utd_samples/sampled_utd19.csv", help="Path to the sampled UTD CSV file.")
+    parser.add_argument("--cities", type=str, default="graz,munich", help="Comma-separated list of cities to filter by. If not provided, all cities are included.")
+    parser.add_argument("--output_dir", type=str, default="sampled_correlations", help="Path to save the correlations CSV file.")
+    parser.add_argument("--should_plot", type=bool, default=False, help="Whether to generate and save plots for each detector ID.")
 
-# shuffle detector IDs for sampling
-# np.random.seed(42)
-# np.random.shuffle(detector_ids)
+    utd_path = parser.parse_args().utd_path
+    sampled_path = parser.parse_args().sampled_path
+    cities_str = parser.parse_args().cities
+    if cities_str:
+        cities = [city.strip() for city in cities_str.split(",")]
+    else:
+        cities = None
+    output_dir = parser.parse_args().output_dir
+    should_plot = parser.parse_args().should_plot
 
-csv_data = []
-with open("sampled_utd19.csv", "r", newline="") as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        csv_data.append(row)
+    return utd_path, sampled_path, cities, output_dir, should_plot
 
-correlations = {}
 
-for det_id in tqdm(detector_ids):
-    det_data = load_utd_data("sampled_utd19.csv", csv_data, det_id)
+if __name__ == "__main__":
+    utd_path, sampled_path, cities, output_dir, should_plot = parse_args()
+    print("UTD path:", utd_path)
+    print("Sampled path:", sampled_path)
+    print("Cities:", cities if cities else "All cities")
+    print("Output directory:", output_dir)
+    print("Should plot:", should_plot)
 
-    # print("=====================================")
-    # print(f"Loaded {len(det_data)} rows for detector ID {det_id}")
-    # print("Sample data:", det_data[:2])
-    correlation, correlation_ma = plot_flow_occ_over_time_with_ma(det_data, f"correlation_plots/{det_id}.png", N=3, plot=True)
-    # print("Plot saved for detector ID", det_id)
-    # print(f"Correlation (occ > 66th percentile): {correlation}")
-    # print(f"MA Correlation (occ MA > 66th percentile): {correlation_ma}")
-    
-    correlations[det_id] = {
-        "correlation": correlation,
-        "correlation_ma": correlation_ma
-    }
+    # if sampling with these parameters has not been done, perform it now
+    if not os.path.exists(sampled_path):
+        sample_utd_by_city(cities=cities, utd19_path=utd_path, sampled_path=sampled_path)
 
-# Save correlations to a CSV file
-with open("sampled_correlations.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["detector_id", "correlation", "correlation_ma"])
-    for det_id, corr_data in correlations.items():
-        writer.writerow([det_id, corr_data["correlation"], corr_data["correlation_ma"]])
+    detector_ids = load_all_detector_ids(sampled_path)
+    detector_ids.sort()
+
+    csv_data = []
+    with open(sampled_path, "r", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            csv_data.append(row)
+
+    correlations = {}
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    if should_plot:
+        os.makedirs(f"{output_dir}/correlation_plots", exist_ok=True)
+
+    for det_id in tqdm(detector_ids):
+        det_data = load_utd_data(sampled_path, csv_data, det_id)
+
+        # print("=====================================")
+        # print(f"Loaded {len(det_data)} rows for detector ID {det_id}")
+        # print("Sample data:", det_data[:2])
+        correlation, correlation_ma = plot_flow_occ_over_time_with_ma(det_data, f"{output_dir}/correlation_plots/{det_id}.png", N=3, plot=should_plot)
+        # print("Plot saved for detector ID", det_id)
+        # print(f"Correlation (occ > 66th percentile): {correlation}")
+        # print(f"MA Correlation (occ MA > 66th percentile): {correlation_ma}")
+        
+        correlations[det_id] = {
+            "correlation": correlation,
+            "correlation_ma": correlation_ma
+        }
+
+    # Save correlations to a CSV file
+    with open(f"{output_dir}/correlations.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["detector_id", "correlation", "correlation_ma"])
+        for det_id, corr_data in correlations.items():
+            writer.writerow([det_id, corr_data["correlation"], corr_data["correlation_ma"]])
+
+    with open(f"{output_dir}/cities_used.txt", "w") as f:
+        if cities is None:
+            f.write("All cities were used.\n")
+        else:
+            f.write("Cities used for sampling:\n")
+            for city in cities:
+                f.write(f"- {city}\n")
