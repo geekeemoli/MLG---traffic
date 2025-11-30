@@ -10,15 +10,19 @@ from sample import sample_utd_by_city
 # Load all detector IDs
 def load_all_detector_ids(csv_path: str):
     detector_ids = set()
+    csv_data = {}
 
     with open(csv_path, "r", newline="") as f:
         reader = csv.DictReader(f)
-        for row in reader:
+        for row in tqdm(reader):
             det_id = row.get("detid")
             if det_id:
                 detector_ids.add(det_id)
+                if det_id not in csv_data:
+                    csv_data[det_id] = []
+                csv_data[det_id].append(row)
 
-    return list(detector_ids)
+    return list(detector_ids), csv_data
 
 # Load UTD data for a given detector ID
 def load_utd_data(csv_path: str, loaded_data, detector_id: str):
@@ -231,6 +235,8 @@ def parse_args():
     return utd_path, sampled_path, cities, output_dir, should_plot
 
 
+# python3 calculate_correlations.py --should_plot=True --cities=madrid --sampled_path=utd_samples/sampled_madrid.csv --output_dir=madrid_correlations
+# python3 calculate_correlations.py --should_plot=True --cities=vilnius --sampled_path=utd_samples/sampled_vilnius.csv --output_dir=vilnius_correlations
 if __name__ == "__main__":
     utd_path, sampled_path, cities, output_dir, should_plot = parse_args()
     print("UTD path:", utd_path)
@@ -243,14 +249,17 @@ if __name__ == "__main__":
     if not os.path.exists(sampled_path):
         sample_utd_by_city(cities=cities, utd19_path=utd_path, sampled_path=sampled_path)
 
-    detector_ids = load_all_detector_ids(sampled_path)
+    detector_ids, csv_data = load_all_detector_ids(sampled_path)
     detector_ids.sort()
 
-    csv_data = []
-    with open(sampled_path, "r", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            csv_data.append(row)
+    print("Loaded", len(detector_ids), "detector IDs from sampled data.")
+    print("Total rows in sampled data:", sum(len(v) for v in csv_data.values()))
+
+    # csv_data = []
+    # with open(sampled_path, "r", newline="") as f:
+    #     reader = csv.DictReader(f)
+    #     for row in reader:
+    #         csv_data.append(row)
 
     correlations = {}
 
@@ -260,12 +269,18 @@ if __name__ == "__main__":
         os.makedirs(f"{output_dir}/correlation_plots", exist_ok=True)
 
     for det_id in tqdm(detector_ids):
-        det_data = load_utd_data(sampled_path, csv_data, det_id)
+        # det_data = load_utd_data(sampled_path, csv_data, det_id)
+        det_data = csv_data.get(det_id, [])
+        # print(f"Processing detector ID: {det_id} with {len(det_data)} records")
 
         # print("=====================================")
         # print(f"Loaded {len(det_data)} rows for detector ID {det_id}")
         # print("Sample data:", det_data[:2])
-        correlation, correlation_ma = plot_flow_occ_over_time_with_ma(det_data, f"{output_dir}/correlation_plots/{det_id}.png", N=3, plot=should_plot)
+        try:
+            correlation, correlation_ma = plot_flow_occ_over_time_with_ma(det_data, f"{output_dir}/correlation_plots/{det_id}.png", N=3, plot=should_plot)
+        except Exception as e:
+            print(f"Error processing detector ID {det_id}: {e}")
+            correlation, correlation_ma = "N/A", "N/A"
         # print("Plot saved for detector ID", det_id)
         # print(f"Correlation (occ > 66th percentile): {correlation}")
         # print(f"MA Correlation (occ MA > 66th percentile): {correlation_ma}")
