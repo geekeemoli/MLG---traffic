@@ -1,1 +1,0 @@
-treba dodati se glavno bazo UTD19
