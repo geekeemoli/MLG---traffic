@@ -265,9 +265,19 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     print(f'Pass 2: {tiles_assigned_pass2} additional tiles assigned to roads')
     print(f'Pass 2: {tiles_too_far_pass2} tiles too far (>{far_thresh_m}m), not assigned')
 
+    # Track unused tiles (tiles that were too far from any road)
+    tiles_used_pass2 = set()
+    for n, assignments in road_tile_assignments.items():
+        for key, tlon, tlat, dist_m, pop in assignments:
+            if key not in tiles_used_pass1:
+                tiles_used_pass2.add(key)
+    
+    tiles_unused = set(tile_pop.keys()) - tiles_used_pass1 - tiles_used_pass2
+
     # --- aggregate and write node attributes ---
-    total_tiles_used = len(tiles_used_pass1) + tiles_assigned_pass2
+    total_tiles_used = len(tiles_used_pass1) + len(tiles_used_pass2)
     print(f'\nTotal tiles used: {total_tiles_used} out of {len(tile_pop)} ({100.0*total_tiles_used/len(tile_pop):.2f}%)')
+    print(f'Tiles unused (too far): {len(tiles_unused)}')
 
     nodes_with_tiles = 0
     total_pop_assigned = 0.0
@@ -302,6 +312,7 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     G.graph['_v4_tile_to_roads'] = dict(tile_to_roads)
     G.graph['_v4_unique_csv_centers'] = unique_csv_centers
     G.graph['_v4_tile_pop'] = tile_pop
+    G.graph['_v4_tiles_unused'] = tiles_unused
 
     return G
 
@@ -505,6 +516,38 @@ def export_top_roads_tiles_geojson(G, output_dir, top_n=100, city_name='city'):
     with open(top_tiles_path, 'w', encoding='utf-8') as f:
         json.dump(top_tiles_geo, f, ensure_ascii=False, indent=2)
     print(f'Wrote top {len(tiles_by_road_count)} tiles by road count to {top_tiles_path}')
+
+    # --- 3. Unused tiles (too far from any road) ---
+    tiles_unused = G.graph.get('_v4_tiles_unused', set())
+    
+    unused_tiles_geo = {'type': 'FeatureCollection', 'features': []}
+    total_unused_pop = 0.0
+
+    for key in tiles_unused:
+        if key not in unique_csv_centers:
+            continue
+        tlon, tlat = unique_csv_centers[key]
+        pop = tile_pop.get(key, 0.0)
+        total_unused_pop += pop
+
+        props = {
+            'tile_key': f"{key[0]},{key[1]}",
+            'tile_lon': tlon,
+            'tile_lat': tlat,
+            'tile_pop': pop,
+        }
+
+        feat = {
+            'type': 'Feature',
+            'geometry': {'type': 'Point', 'coordinates': [tlon, tlat]},
+            'properties': props
+        }
+        unused_tiles_geo['features'].append(feat)
+
+    unused_tiles_path = os.path.join(output_dir, f'unused_tiles_{city_tag}.geojson')
+    with open(unused_tiles_path, 'w', encoding='utf-8') as f:
+        json.dump(unused_tiles_geo, f, ensure_ascii=False, indent=2)
+    print(f'Wrote {len(tiles_unused)} unused tiles (total pop: {total_unused_pop:.1f}) to {unused_tiles_path}')
 
 
 if __name__ == '__main__':
