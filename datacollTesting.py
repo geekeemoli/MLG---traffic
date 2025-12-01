@@ -2,7 +2,7 @@ import os
 import csv
 import osmnx as ox
 import networkx as nx
-from src import popdensityV4 as p4
+from src import popdensityV5 as p
 from shapely.geometry import LineString
 
 # Base directories
@@ -99,14 +99,14 @@ for city in cities:
         continue
     
     print(f"Using population data: {csv_path}")
-    graph_popd = p4.get_density(graphs[city], csv_path)
+    graph_popd = p.get_density(graphs[city], csv_path, verbose=True)
     # quick samples
     # print('sample with pop_density>0:', [n for n,d in graph_popd.nodes(data=True) if d.get('pop_density',0)>0][:8])
-    summary = p4.analyze_density(graph_popd, top_n=100, verbose=True)
+    # summary = p4.analyze_density(graph_popd, top_n=100, verbose=True)
 
-    # export reports: far-assigned nodes and unassigned nodes
-    reports_dir = os.path.join(os.path.dirname(__file__), 'analysis_reports')
-    os.makedirs(reports_dir, exist_ok=True)
+    # # export reports: far-assigned nodes and unassigned nodes
+    # reports_dir = os.path.join(os.path.dirname(__file__), 'analysis_reports')
+    # os.makedirs(reports_dir, exist_ok=True)
 
-    # Export top roads by tiles and top tiles by roads GeoJSONs
-    p4.export_top_roads_tiles_geojson(graph_popd, reports_dir, top_n=100, city_name=city)
+    # # Export top roads by tiles and top tiles by roads GeoJSONs
+    # p4.export_top_roads_tiles_geojson(graph_popd, reports_dir, top_n=100, city_name=city)
