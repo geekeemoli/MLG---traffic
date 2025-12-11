@@ -257,34 +257,21 @@ def create_road_graphs_with_labels(
         
         print(f"Found {len(city_detector_data)} detectors with correlations in {city}")
         
-        #region OLD - loading OSM and creating line graph from scratch
         # Download street network from OpenStreetMap
-        # print("Downloading road network from OSM...")
-        # G = ox.graph_from_place(city, network_type="drive")
-
+        print("Downloading road network from OSM...")
+        G = ox.graph_from_place(city, network_type="drive")
+        print(f"Original graph: {len(G.nodes)} nodes, {len(G.edges)} edges")
+        
         # Create line graph: edges become nodes (road segments)
-        # print("Creating line graph (road-centric)...")
-        # G_roads = nx.line_graph(G)
-        # print(f"Line graph: {len(G_roads.nodes)} road segments (nodes)")
+        print("Creating line graph (road-centric)...")
+        G_roads = nx.line_graph(G)
+        print(f"Line graph: {len(G_roads.nodes)} road segments (nodes)")
         
         # Copy edge attributes from original graph to line graph nodes
-        # for u, v, k, data in G.edges(keys=True, data=True):
-        #     lg_node = (u, v, k)
-        #     if lg_node in G_roads:
-        #         G_roads.nodes[lg_node].update(data)
-        # endregion
-
-        # load the graph from gpickle file at path os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
-        print("Loading road graph from gpickle file wtih population density...")
-        og_graph_file_path = os.path.join("data", "graphs", f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
-        with open(og_graph_file_path, "rb") as f:
-            G = pickle.load(f)
-
-        print(f"Original graph: {len(G.nodes)} nodes, {len(G.edges)} edges")
-        print("Attributes for 10 random nodes:")
-        for i in range(10):
-            random_node = list(G.nodes())[i*10]
-            print(f"  - Node {random_node} has attributes: {G.nodes[random_node].keys()}")
+        for u, v, k, data in G.edges(keys=True, data=True):
+            lg_node = (u, v, k)
+            if lg_node in G_roads:
+                G_roads.nodes[lg_node].update(data)
         
         # Map detectors to road segments
         print("Mapping detectors to road segments...")
@@ -293,11 +280,6 @@ def create_road_graphs_with_labels(
         detector_ids = city_detector_data['detid'].values
         correlations = city_detector_data['correlation_ma'].values
         
-        # Add this block:
-        if "crs" not in G.graph:
-            # WGS84 lon/lat
-            G.graph["crs"] = "epsg:4326"
-
         # Find nearest edge in original graph for each detector
         nearest_edges = ox.distance.nearest_edges(
             G, detector_long, detector_lat, return_dist=False
@@ -347,10 +329,28 @@ def create_road_graphs_with_labels(
         print(f"  Unlabeled (dead zone): {stats['unlabeled_dead_zone']} ({100*stats['unlabeled_dead_zone']/len(node_list):.2f}%)")
         print(f"  Unlabeled (no detector): {stats['unlabeled_no_detector']} ({100*stats['unlabeled_no_detector']/len(node_list):.2f}%)")
         print(f"  Total road segments: {len(node_list)}")
-        
+
+        print("Loading road graph from gpickle file wtih population density...")
+        og_graph_file_path = os.path.join("data", "graphs", f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+        with open(og_graph_file_path, "rb") as f:
+            og_graph_with_popdensity = pickle.load(f)
+
+        # Sanity check: node sets should match between G_roads and pop-density graph
+        nodes_roads = set(G_roads.nodes())
+        nodes_pop = set(og_graph_with_popdensity.nodes())
+
+        missing_in_pop = nodes_roads - nodes_pop
+        missing_in_roads = nodes_pop - nodes_roads
+
+        print(f"Nodes only in G_roads: {len(missing_in_pop)}")
+        print(f"Nodes only in pop-density graph: {len(missing_in_roads)}")
+
+        if missing_in_pop or missing_in_roads:
+            print("WARNING: Node sets differ between line graph and pop-density graph!")
+
         # Store results
         results[city] = {
-            'graph': G_roads,
+            'graph': og_graph_with_popdensity,
             'y': y_tensor,
             'node_list': node_list,
             'detector_mapping': detector_to_road,
@@ -358,7 +358,6 @@ def create_road_graphs_with_labels(
         }
     
     return results
-
 
 def save_graphs_and_labels(
     results: Dict[str, Dict],
