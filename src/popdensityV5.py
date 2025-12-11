@@ -23,6 +23,8 @@ try:
 except ImportError:
     HAS_SCIPY = False
 
+print(f"Using scipy: {HAS_SCIPY}")
+
 
 def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=True, far_thresh_m=100.0, verbose=False):
     """

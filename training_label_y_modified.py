@@ -257,21 +257,34 @@ def create_road_graphs_with_labels(
         
         print(f"Found {len(city_detector_data)} detectors with correlations in {city}")
         
+        #region OLD - loading OSM and creating line graph from scratch
         # Download street network from OpenStreetMap
-        print("Downloading road network from OSM...")
-        G = ox.graph_from_place(city, network_type="drive")
-        print(f"Original graph: {len(G.nodes)} nodes, {len(G.edges)} edges")
-        
+        # print("Downloading road network from OSM...")
+        # G = ox.graph_from_place(city, network_type="drive")
+
         # Create line graph: edges become nodes (road segments)
-        print("Creating line graph (road-centric)...")
-        G_roads = nx.line_graph(G)
-        print(f"Line graph: {len(G_roads.nodes)} road segments (nodes)")
+        # print("Creating line graph (road-centric)...")
+        # G_roads = nx.line_graph(G)
+        # print(f"Line graph: {len(G_roads.nodes)} road segments (nodes)")
         
         # Copy edge attributes from original graph to line graph nodes
-        for u, v, k, data in G.edges(keys=True, data=True):
-            lg_node = (u, v, k)
-            if lg_node in G_roads:
-                G_roads.nodes[lg_node].update(data)
+        # for u, v, k, data in G.edges(keys=True, data=True):
+        #     lg_node = (u, v, k)
+        #     if lg_node in G_roads:
+        #         G_roads.nodes[lg_node].update(data)
+        # endregion
+
+        # load the graph from gpickle file at path os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+        print("Loading road graph from gpickle file wtih population density...")
+        og_graph_file_path = os.path.join("data", "graphs", f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+        with open(og_graph_file_path, "rb") as f:
+            G = pickle.load(f)
+
+        print(f"Original graph: {len(G.nodes)} nodes, {len(G.edges)} edges")
+        print("Attributes for 10 random nodes:")
+        for i in range(10):
+            random_node = list(G.nodes())[i*10]
+            print(f"  - Node {random_node} has attributes: {G.nodes[random_node].keys()}")
         
         # Map detectors to road segments
         print("Mapping detectors to road segments...")
@@ -280,6 +293,11 @@ def create_road_graphs_with_labels(
         detector_ids = city_detector_data['detid'].values
         correlations = city_detector_data['correlation_ma'].values
         
+        # Add this block:
+        if "crs" not in G.graph:
+            # WGS84 lon/lat
+            G.graph["crs"] = "epsg:4326"
+
         # Find nearest edge in original graph for each detector
         nearest_edges = ox.distance.nearest_edges(
             G, detector_long, detector_lat, return_dist=False
@@ -311,22 +329,12 @@ def create_road_graphs_with_labels(
         
         for idx, node in enumerate(node_list):
             if node in road_to_correlations:
-                # If multiple detectors on same road, average their correlations
-                avg_corr = np.mean(road_to_correlations[node])
-                
-                if avg_corr < threshold_low:
-                    y[idx] = 1.0  # Congestion (critical road)
-                    stats['congestion'] += 1
-                elif avg_corr > threshold_high:
-                    y[idx] = 0.0  # No congestion
-                    stats['no_congestion'] += 1
-                else:
-                    # In dead zone (-0.3 to 0.3)
-                    y[idx] = unlabeled_value
-                    stats['unlabeled_dead_zone'] += 1
+                # If multiple detectors on same road, assign the minimum correlation value on the given road segment because it is most likely to show congestion
+                min_corr = np.min(road_to_correlations[node])
+                y[idx] = min_corr
             else:
-                # No detector on this road segment
-                y[idx] = unlabeled_value
+                # No detector on this road segment --> value 0 gives a neutral signal
+                y[idx] = 0.0 # Unlabeled
                 stats['unlabeled_no_detector'] += 1
         
         # Convert to PyTorch tensor
@@ -369,31 +377,43 @@ def save_graphs_and_labels(
         city_name = city.replace(',', '').replace(' ', '_')
         
         # Save graph (NetworkX format) using pickle
+        nx.set_node_attributes(data['graph'], { n: data['y'][i].item() for i, n in enumerate(data['node_list']) }, 'correlation')
+
+        # check the size of the graph
+        print("Saving data for city:", city)
+        print(f"- Graph has {len(data['graph'].nodes)} nodes and {len(data['graph'].edges)} edges")
+
+        # check whether all nodes have the same attributes (by printing the list of attributes of 10 random nodes)
+        attribute_list = list(data['graph'].nodes(data=True))[0][1].keys()
+        for i in range(10):
+            random_node = list(data['graph'].nodes())[i*10]
+            print(f"  - Node {random_node} has attributes: {data['graph'].nodes[random_node].keys()}")
+
         graph_file = os.path.join(output_dir, f"{city_name}_graph.gpickle")
         with open(graph_file, 'wb') as f:
             pickle.dump(data['graph'], f, pickle.HIGHEST_PROTOCOL)
         print(f"Saved graph: {graph_file}")
         
-        # Save y tensor (labels)
-        y_file = os.path.join(output_dir, f"{city_name}_y.pt")
-        torch.save(data['y'], y_file)
-        print(f"Saved y tensor: {y_file}")
+        # # Save y tensor (labels)
+        # y_file = os.path.join(output_dir, f"{city_name}_y.pt")
+        # torch.save(data['y'], y_file)
+        # print(f"Saved y tensor: {y_file}")
         
-        # Save node list (to maintain node ordering)
-        node_file = os.path.join(output_dir, f"{city_name}_node_list.pkl")
-        with open(node_file, 'wb') as f:
-            pickle.dump(data['node_list'], f)
-        print(f"Saved node list: {node_file}")
+        # # Save node list (to maintain node ordering)
+        # node_file = os.path.join(output_dir, f"{city_name}_node_list.pkl")
+        # with open(node_file, 'wb') as f:
+        #     pickle.dump(data['node_list'], f)
+        # print(f"Saved node list: {node_file}")
         
-        # Save metadata
-        meta_file = os.path.join(output_dir, f"{city_name}_metadata.pkl")
-        metadata = {
-            'stats': data['stats'],
-            'detector_mapping': data['detector_mapping']
-        }
-        with open(meta_file, 'wb') as f:
-            pickle.dump(metadata, f)
-        print(f"Saved metadata: {meta_file}")
+        # # Save metadata
+        # meta_file = os.path.join(output_dir, f"{city_name}_metadata.pkl")
+        # metadata = {
+        #     'stats': data['stats'],
+        #     'detector_mapping': data['detector_mapping']
+        # }
+        # with open(meta_file, 'wb') as f:
+        #     pickle.dump(metadata, f)
+        # print(f"Saved metadata: {meta_file}")
         
     print(f"\nAll data saved to {output_dir}/")
 
@@ -437,10 +457,11 @@ if __name__ == "__main__":
         results = create_road_graphs_with_labels(
             detector_coords_file="data/traffic_data/detectors_public.csv",
             correlation_file="analyse_utd19/all_correlations/correlations.csv",
-            cities=["Graz, Austria", "Munich, Germany", "Zurich, Switzerland", "Wolfsburg, Germany"],
-            threshold_low=-0.1,
-            threshold_high=0.1,
-            unlabeled_value=0.0
+            # cities=["Graz, Austria", "Munich, Germany", "Zurich, Switzerland", "Wolfsburg, Germany"],
+            cities=["Graz, Austria"], # For testing, process only one city
+            # threshold_low=-0.1,
+            # threshold_high=0.1,           <-- Don't need these parameters anymore
+            # unlabeled_value=0.0
         )
         
         if not results:
@@ -450,7 +471,7 @@ if __name__ == "__main__":
             print("\n" + "="*70)
             print("SAVING DATA")
             print("="*70)
-            save_graphs_and_labels(results, output_dir="processed_graphs")
+            save_graphs_and_labels(results, output_dir="data/processed_graphs")
             
             # Show summary
             print("\n" + "="*70)

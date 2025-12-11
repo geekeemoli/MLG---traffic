@@ -4,6 +4,8 @@ import osmnx as ox
 import networkx as nx
 from src import popdensityV5 as p
 from shapely.geometry import LineString
+import time
+import pickle
 
 # Base directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -63,10 +65,60 @@ def get_csv_path_for_city(city_str):
     csv_path = os.path.join(POP_DATA_DIR, matching_csvs[0])
     return csv_path
 
-cities = ["Graz, Austria"]
-graphs = {}
+# cities = ["Graz, Austria"] # add all other cities
+cities = [
+    "Augsburg, Germany",
+    "Basel, Switzerland",
+    "Berne, Switzerland",
+    "Birmingham, UK",
+    "Bolton, UK",
+    "Bremen, Germany",
+    "Bordeaux, France",
+    "Cagliari, Italy",
+    "Constance, Germany",
+    "Darmstadt, Germany",
+    "Essen, Germany",
+    "Frankfurt, Germany",
+    "Graz, Austria",
+    "Groningen, Netherlands",
+    "Hamburg, Germany",
+    "Innsbruck, Austria",
+    "Kassel, Germany",
+    "London, UK",
+    "Los Angeles, USA",
+    "Lucerne, Switzerland",
+    "Madrid, Spain",
+    "Melbourne, Australia",
+    "Manchester, UK",
+    "Marseille, France",
+    "Munich, Germany",
+    "Paris, France",
+    "Rotterdam, Netherlands",
+    "Santander, Spain",
+    "Speyer, Germany",
+    "Strasbourg, France",
+    "Stuttgart, Germany",
+    "Taipei, Taiwan",
+    "Tokyo, Japan",
+    "Torino, Italy",
+    "Toulouse, France",
+    "Utrecht, Netherlands",
+    "Vilnius, Lithuania",
+    "Wolfsburg, Germany",
+    "Zurich, Switzerland"
+]
 
 for city in cities:
+    # check if the graph with population density already exists
+    output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+    if os.path.exists(output_path):
+        print(f"Graph with population density for {city} already exists at {output_path}, skipping...\n")
+        continue
+    if "Tokyo" in city:
+        print("Skipping Tokyo for now...\n")
+        continue
+
+    start_time = time.time()
     print(f"Processing {city}")
     G = ox.graph_from_place(city, network_type="drive")
 
@@ -86,12 +138,8 @@ for city in cities:
         if lg_node in road_G:
             road_G.nodes[lg_node].update(data)
 
-    graphs[city] = road_G
     print(f"{len(road_G.nodes)} roads, {len(road_G.edges)} adjacencies")
 
-for city in cities:
-    print(f'adding density to {city}')
-    
     # Get the appropriate CSV path for this city's country
     csv_path = get_csv_path_for_city(city)
     if csv_path is None:
@@ -99,14 +147,13 @@ for city in cities:
         continue
     
     print(f"Using population data: {csv_path}")
-    graph_popd = p.get_density(graphs[city], csv_path, verbose=True)
-    # quick samples
-    # print('sample with pop_density>0:', [n for n,d in graph_popd.nodes(data=True) if d.get('pop_density',0)>0][:8])
-    # summary = p4.analyze_density(graph_popd, top_n=100, verbose=True)
+    graph_popd = p.get_density(road_G, csv_path, verbose=True)
 
-    # # export reports: far-assigned nodes and unassigned nodes
-    # reports_dir = os.path.join(os.path.dirname(__file__), 'analysis_reports')
-    # os.makedirs(reports_dir, exist_ok=True)
+    # save the graph to gpickle file
+    output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "wb") as f:
+        pickle.dump(graph_popd, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # # Export top roads by tiles and top tiles by roads GeoJSONs
-    # p4.export_top_roads_tiles_geojson(graph_popd, reports_dir, top_n=100, city_name=city)
+    print(f"Saved graph with population density to {output_path}")
+    print(f"Finished processing {city} in {time.time() - start_time:.2f} seconds\n")
