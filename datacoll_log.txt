@@ -1,0 +1,347 @@
+
+============================================================
+Run started at 2025-12-13 15:32:52
+============================================================
+Graph with population density for Augsburg, Germany already exists at c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Augsburg_Germany_road_graph_with_popdensity.gpickle, skipping...
+
+Processing Basel, Switzerland
+4674 roads, 11830 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\che_general_2020.csv
+Tiles: 12081/22576 (53.5%)
+Population: 144334/204215 (70.7%)
+Roads with pop: 4665/4674
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Basel_Switzerland_road_graph_with_popdensity.gpickle
+Finished processing Basel, Switzerland in 32.38 seconds
+
+Processing Berne, Switzerland
+5882 roads, 16342 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\che_general_2020.csv
+Tiles: 13442/20806 (64.6%)
+Population: 98080/136799 (71.7%)
+Roads with pop: 5822/5882
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Berne_Switzerland_road_graph_with_popdensity.gpickle
+Finished processing Berne, Switzerland in 41.50 seconds
+
+Processing Birmingham, UK
+57573 roads, 149874 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_gbr_2019-07-01.csv
+Tiles: 149834/270408 (55.4%)
+Population: 1041037/1624609 (64.1%)
+Roads with pop: 54184/57573
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Birmingham_UK_road_graph_with_popdensity.gpickle
+Finished processing Birmingham, UK in 88.87 seconds
+
+Processing Bolton, UK
+27948 roads, 73806 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_gbr_2019-07-01.csv
+Tiles: 41672/53697 (77.6%)
+Population: 277380/348099 (79.7%)
+Roads with pop: 27285/27948
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Bolton_UK_road_graph_with_popdensity.gpickle
+Finished processing Bolton, UK in 71.53 seconds
+
+Processing Bremen, Germany
+20264 roads, 52226 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 65944/149204 (44.2%)
+Population: 417674/704801 (59.3%)
+Roads with pop: 19709/20264
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Bremen_Germany_road_graph_with_popdensity.gpickle
+Finished processing Bremen, Germany in 109.02 seconds
+
+Processing Bordeaux, France
+8961 roads, 19484 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_fra_2019-07-01.csv
+Tiles: 26237/51845 (50.6%)
+Population: 232572/346897 (67.0%)
+Roads with pop: 8929/8961
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Bordeaux_France_road_graph_with_popdensity.gpickle
+Finished processing Bordeaux, France in 105.74 seconds
+
+Processing Cagliari, Italy
+7937 roads, 17104 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\ita_general_2020.csv
+Tiles: 23601/44625 (52.9%)
+Population: 132792/209448 (63.4%)
+Roads with pop: 7759/7937
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Cagliari_Italy_road_graph_with_popdensity.gpickle
+Finished processing Cagliari, Italy in 137.19 seconds
+
+Processing Constance, Germany
+3609 roads, 9928 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 10221/12579 (81.3%)
+Population: 68413/85297 (80.2%)
+Roads with pop: 3359/3609
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Constance_Germany_road_graph_with_popdensity.gpickle
+Finished processing Constance, Germany in 93.85 seconds
+
+Processing Darmstadt, Germany
+6358 roads, 17998 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 23502/41621 (56.5%)
+Population: 121328/193546 (62.7%)
+Roads with pop: 6246/6358
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Darmstadt_Germany_road_graph_with_popdensity.gpickle
+Finished processing Darmstadt, Germany in 94.60 seconds
+
+Processing Essen, Germany
+25942 roads, 68553 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 73860/134224 (55.0%)
+Population: 473143/797141 (59.4%)
+Roads with pop: 25647/25942
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Essen_Germany_road_graph_with_popdensity.gpickle
+Finished processing Essen, Germany in 114.23 seconds
+
+Processing Frankfurt, Germany
+20358 roads, 48043 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 62230/130757 (47.6%)
+Population: 560598/1017196 (55.1%)
+Roads with pop: 19786/20358
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Frankfurt_Germany_road_graph_with_popdensity.gpickle
+Finished processing Frankfurt, Germany in 111.61 seconds
+
+Processing Graz, Austria
+11256 roads, 30845 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\aut_general_2020.csv
+Tiles: 52993/73048 (72.5%)
+Population: 245087/316652 (77.4%)
+Roads with pop: 11165/11256
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Graz_Austria_road_graph_with_popdensity.gpickle
+Finished processing Graz, Austria in 55.38 seconds
+
+Processing Groningen, Netherlands
+11627 roads, 29738 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_nld_2019-07-01.csv
+Tiles: 26409/31598 (83.6%)
+Population: 179396/207117 (86.6%)
+Roads with pop: 11281/11627
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Groningen_Netherlands_road_graph_with_popdensity.gpickle
+Finished processing Groningen, Netherlands in 24.91 seconds
+
+Processing Hamburg, Germany
+52871 roads, 140485 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 206200/401951 (51.3%)
+Population: 1330142/2137028 (62.2%)
+Roads with pop: 52029/52871
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Hamburg_Germany_road_graph_with_popdensity.gpickle
+Finished processing Hamburg, Germany in 178.22 seconds
+
+Processing Innsbruck, Austria
+3798 roads, 9457 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\aut_general_2020.csv
+Tiles: 17262/27091 (63.7%)
+Population: 105337/144935 (72.7%)
+Roads with pop: 3774/3798
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Innsbruck_Austria_road_graph_with_popdensity.gpickle
+Finished processing Innsbruck, Austria in 58.36 seconds
+
+Processing Kassel, Germany
+9788 roads, 27153 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 37225/52640 (70.7%)
+Population: 167647/223062 (75.2%)
+Roads with pop: 9612/9788
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Kassel_Germany_road_graph_with_popdensity.gpickle
+Finished processing Kassel, Germany in 96.30 seconds
+
+Processing London, UK
+303696 roads, 812652 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_gbr_2019-07-01.csv
+Tiles: 975479/1290340 (75.6%)
+Population: 8824103/10100990 (87.4%)
+Roads with pop: 302743/303696
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\London_UK_road_graph_with_popdensity.gpickle
+Finished processing London, UK in 252.70 seconds
+
+Processing Los Angeles, USA
+136122 roads, 423329 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_usa_los_angeles.csv
+Tiles: 633113/1120015 (56.5%)
+Population: 3438940/5634006 (61.0%)
+Roads with pop: 135637/136122
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Los_Angeles_USA_road_graph_with_popdensity.gpickle
+Finished processing Los Angeles, USA in 111.93 seconds
+
+Processing Lucerne, Switzerland
+2613 roads, 6695 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\che_general_2020.csv
+Tiles: 6639/12963 (51.2%)
+Population: 66048/106996 (61.7%)
+Roads with pop: 2481/2613
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Lucerne_Switzerland_road_graph_with_popdensity.gpickle
+Finished processing Lucerne, Switzerland in 39.31 seconds
+
+Processing Madrid, Spain
+61610 roads, 129851 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\esp_general_2020.csv
+Tiles: 139002/234755 (59.2%)
+Population: 2809426/3962312 (70.9%)
+Roads with pop: 60555/61610
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Madrid_Spain_road_graph_with_popdensity.gpickle
+Finished processing Madrid, Spain in 109.47 seconds
+
+Processing Melbourne, Australia
+499153 roads, 1232527 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_aus_2018-10-01.csv
+Tiles: 1358976/1753579 (77.5%)
+Population: 4420215/4814300 (91.8%)
+Roads with pop: 453880/499153
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Melbourne_Australia_road_graph_with_popdensity.gpickle
+Finished processing Melbourne, Australia in 320.10 seconds
+
+Processing Manchester, UK
+35049 roads, 96181 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_gbr_2019-07-01.csv
+Tiles: 48895/95600 (51.1%)
+Population: 606951/1015319 (59.8%)
+Roads with pop: 34673/35049
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Manchester_UK_road_graph_with_popdensity.gpickle
+Finished processing Manchester, UK in 84.10 seconds
+
+Processing Marseille, France
+26557 roads, 61844 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_fra_2019-07-01.csv
+Tiles: 75457/105488 (71.5%)
+Population: 745619/923254 (80.8%)
+Roads with pop: 26519/26557
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Marseille_France_road_graph_with_popdensity.gpickle
+Finished processing Marseille, France in 123.95 seconds
+
+Processing Munich, Germany
+36326 roads, 103316 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 144307/209694 (68.8%)
+Population: 1314199/1700275 (77.3%)
+Roads with pop: 36072/36326
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Munich_Germany_road_graph_with_popdensity.gpickle
+Finished processing Munich, Germany in 111.00 seconds
+
+Processing Paris, France
+18178 roads, 36811 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_fra_2019-07-01.csv
+Tiles: 50879/77062 (66.0%)
+Population: 2167232/2926366 (74.1%)
+Roads with pop: 18087/18178
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Paris_France_road_graph_with_popdensity.gpickle
+Finished processing Paris, France in 127.19 seconds
+
+Processing Rotterdam, Netherlands
+25579 roads, 63466 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_nld_2019-07-01.csv
+Tiles: 45492/75351 (60.4%)
+Population: 313629/524589 (59.8%)
+Roads with pop: 25302/25579
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Rotterdam_Netherlands_road_graph_with_popdensity.gpickle
+Finished processing Rotterdam, Netherlands in 40.69 seconds
+
+Processing Santander, Spain
+103023 roads, 270685 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\esp_general_2020.csv
+Tiles: 176531/329407 (53.6%)
+Population: 461571/628736 (73.4%)
+Roads with pop: 96753/103023
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Santander_Spain_road_graph_with_popdensity.gpickle
+Finished processing Santander, Spain in 223.40 seconds
+
+Processing Speyer, Germany
+2988 roads, 8011 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 6936/10161 (68.3%)
+Population: 37862/54961 (68.9%)
+Roads with pop: 2827/2988
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Speyer_Germany_road_graph_with_popdensity.gpickle
+Finished processing Speyer, Germany in 90.61 seconds
+
+Processing Strasbourg, France
+9364 roads, 23557 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_fra_2019-07-01.csv
+Tiles: 25906/55224 (46.9%)
+Population: 224732/386368 (58.2%)
+Roads with pop: 9238/9364
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Strasbourg_France_road_graph_with_popdensity.gpickle
+Finished processing Strasbourg, France in 112.42 seconds
+
+Processing Stuttgart, Germany
+21587 roads, 58014 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 65818/108201 (60.8%)
+Population: 506737/742805 (68.2%)
+Roads with pop: 21342/21587
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Stuttgart_Germany_road_graph_with_popdensity.gpickle
+Finished processing Stuttgart, Germany in 107.97 seconds
+
+Processing 臺北市, Taiwan
+28441 roads, 75540 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\twn_general_2020.csv
+Tiles: 83929/167980 (50.0%)
+Population: 1801800/4446711 (40.5%)
+Roads with pop: 28194/28441
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\臺北市_Taiwan_road_graph_with_popdensity.gpickle
+Finished processing 臺北市, Taiwan in 37.23 seconds
+
+Processing 東京23区, Japan
+305402 roads, 880439 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\jpn_population_2020.csv
+Tiles: 335902/485895 (69.1%)
+Population: 9178547/11898098 (77.1%)
+Roads with pop: 305028/305402
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\東京23区_Japan_road_graph_with_popdensity.gpickle
+Finished processing 東京23区, Japan in 229.97 seconds
+
+Processing Torino, Italy
+25242 roads, 59196 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\ita_general_2020.csv
+Tiles: 85384/135846 (62.9%)
+Population: 841099/974169 (86.3%)
+Roads with pop: 25133/25242
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Torino_Italy_road_graph_with_popdensity.gpickle
+Finished processing Torino, Italy in 152.67 seconds
+
+Processing Toulouse, France
+19567 roads, 45377 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_fra_2019-07-01.csv
+Tiles: 62692/113855 (55.1%)
+Population: 401597/578632 (69.4%)
+Roads with pop: 19376/19567
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Toulouse_France_road_graph_with_popdensity.gpickle
+Finished processing Toulouse, France in 132.60 seconds
+
+Processing Utrecht, Netherlands
+19235 roads, 49285 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_nld_2019-07-01.csv
+Tiles: 33041/51150 (64.6%)
+Population: 321436/429129 (74.9%)
+Roads with pop: 18683/19235
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Utrecht_Netherlands_road_graph_with_popdensity.gpickle
+Finished processing Utrecht, Netherlands in 34.52 seconds
+
+Processing Vilnius, Lithuania
+18534 roads, 50588 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_ltu_2019-07-01.csv
+Tiles: 52961/112535 (47.1%)
+Population: 329931/557116 (59.2%)
+Roads with pop: 16693/18534
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Vilnius_Lithuania_road_graph_with_popdensity.gpickle
+Finished processing Vilnius, Lithuania in 27.99 seconds
+
+Processing Wolfsburg, Germany
+9052 roads, 24026 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\population_deu_2019-07-01.csv
+Tiles: 37558/54437 (69.0%)
+Population: 97538/134688 (72.4%)
+Roads with pop: 8488/9052
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Wolfsburg_Germany_road_graph_with_popdensity.gpickle
+Finished processing Wolfsburg, Germany in 93.74 seconds
+
+Processing Zurich, Switzerland
+10571 roads, 27088 adjacencies
+Using population data: c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\population_data\che_general_2020.csv
+Tiles: 29836/47064 (63.4%)
+Population: 343655/478729 (71.8%)
+Roads with pop: 10519/10571
+Saved graph with population density to c:\Users\diego\Documents\Faks\3. letnik\1.semester\strojno učenje na grafih\project\MLG---traffic\data\graphs\Zurich_Switzerland_road_graph_with_popdensity.gpickle
+Finished processing Zurich, Switzerland in 47.89 seconds

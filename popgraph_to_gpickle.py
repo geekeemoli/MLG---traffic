@@ -120,8 +120,8 @@ cities = [
     "Speyer, Germany",
     "Strasbourg, France",
     "Stuttgart, Germany",
-    "Taipei, Taiwan",
-    "Tokyo, Japan",
+    "臺北市, Taiwan",  # Taipei City
+    "東京23区, Japan", # Tokyo 23 Wards
     "Torino, Italy",
     "Toulouse, France",
     "Utrecht, Netherlands",
