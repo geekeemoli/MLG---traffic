@@ -91,11 +91,11 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Fal
                 lon_field = fields[i]
             elif f in ('lat', 'latitude', 'y'):
                 lat_field = fields[i]
-            elif f in ('population', 'pop', 'value', 'count'):
-                pop_field = fields[i]
+            #elif f in ('population', 'pop', 'value', 'count'):
+            pop_field = fields[-1]
         
         if lon_field is None or lat_field is None or pop_field is None:
-            print("deafult izbira stolpcev")
+            print("Warning: uporabljamo deafult izbira stolpcev (en od lat al lon stolpcev ni vredu)")
             lon_field, lat_field, pop_field = fields[:3]
         
         seen_in_range = False
