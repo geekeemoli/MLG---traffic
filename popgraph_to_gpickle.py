@@ -139,9 +139,6 @@ for city in cities:
     if os.path.exists(output_path):
         print(f"Graph with population density for {city} already exists at {output_path}, skipping...\n")
         continue
-    if "Tokyo" in city:
-        print("Skipping Tokyo for now...\n")
-        continue
 
     start_time = time.time()
     print(f"Processing {city}")
