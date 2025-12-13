@@ -6,10 +6,33 @@ from src import popdensityV5 as p
 from shapely.geometry import LineString
 import time
 import pickle
+import sys
 
 # Base directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POP_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "population_data")
+LOG_FILE = os.path.join(SCRIPT_DIR, "datacoll_log.txt")
+
+# Custom class to write to both terminal and file
+class Logger:
+    def __init__(self, filepath):
+        self.terminal = sys.stdout
+        self.log = open(filepath, "a", encoding="utf-8")
+    
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush()
+    
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+
+# Redirect stdout to both terminal and log file
+sys.stdout = Logger(LOG_FILE)
+print(f"\n{'='*60}")
+print(f"Run started at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+print(f"{'='*60}")
 
 # Country name to CSV file prefix mapping
 COUNTRY_TO_CSV_PREFIX = {
@@ -65,7 +88,6 @@ def get_csv_path_for_city(city_str):
     csv_path = os.path.join(POP_DATA_DIR, matching_csvs[0])
     return csv_path
 
-# cities = ["Graz, Austria"] # add all other cities
 cities = [
     "Augsburg, Germany",
     "Basel, Switzerland",
@@ -108,8 +130,11 @@ cities = [
     "Zurich, Switzerland"
 ]
 
+# gdf = ox.geocode_to_gdf("Tokyo, Japan")
+# print(gdf[['display_name', 'type', 'class']])
+# print(f"Bounds: {gdf.total_bounds}")
+
 for city in cities:
-    # check if the graph with population density already exists
     output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
     if os.path.exists(output_path):
         print(f"Graph with population density for {city} already exists at {output_path}, skipping...\n")
@@ -122,7 +147,6 @@ for city in cities:
     print(f"Processing {city}")
     G = ox.graph_from_place(city, network_type="drive")
 
-    # ensure edges have geometry
     for u, v, k, data in G.edges(keys=True, data=True):
         if 'geometry' not in data:
             x1 = G.nodes[u].get('x'); y1 = G.nodes[u].get('y')
@@ -132,7 +156,6 @@ for city in cities:
 
     road_G = nx.line_graph(G)
 
-    # copy edge attributes from G to line-graph node attributes
     for u, v, k, data in G.edges(keys=True, data=True):
         lg_node = (u, v, k)
         if lg_node in road_G:
@@ -140,7 +163,6 @@ for city in cities:
 
     print(f"{len(road_G.nodes)} roads, {len(road_G.edges)} adjacencies")
 
-    # Get the appropriate CSV path for this city's country
     csv_path = get_csv_path_for_city(city)
     if csv_path is None:
         print(f"Skipping {city} - no population data available")
@@ -149,7 +171,6 @@ for city in cities:
     print(f"Using population data: {csv_path}")
     graph_popd = p.get_density(road_G, csv_path, verbose=True)
 
-    # save the graph to gpickle file
     output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "wb") as f:
