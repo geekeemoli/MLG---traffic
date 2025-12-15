@@ -3,11 +3,7 @@ import networkx as nx
 import json
 import math
 import numpy as np
-
-def load_graph(path):
-    with open(path, "rb") as f:
-        graph = pickle.load(f)
-    return graph
+from load_graph import load_graph_nx as load_graph
 
 def add_curvature(node_data):
     """
@@ -52,27 +48,76 @@ def add_curvature(node_data):
 def main(path):
     graph = load_graph(path)
 
-    print(f"There are {len(graph.nodes)} nodes and {len(graph.edges)} edges in the graph.")
+    # print(f"There are {len(graph.nodes)} nodes and {len(graph.edges)} edges in the graph.")
+    
+    all_node_attributes = set()
+    for node_id in graph.nodes:
+        all_node_attributes.update(graph.nodes[node_id].keys())
+    # print("All node attribute names:", all_node_attributes)
 
-    print("Sample node data:")
-    # print the node data for 10 nodes spaced evenly throughout the graph
+    # count how many nodes have non-zero correlation
+    non_zero_correlation = 0
+    for node_id in graph.nodes:
+        if graph.nodes[node_id].get("correlation", 0) != 0:
+            non_zero_correlation += 1
+    # print(f"Number of nodes with non-zero correlation: {non_zero_correlation}/{len(graph.nodes)}")
+    non_zero_curvature = 0
+    for node_id in graph.nodes:
+        if graph.nodes[node_id].get("curvature", 0) != 0:
+            non_zero_curvature += 1
+    # print(f"Number of nodes with non-zero curvature: {non_zero_curvature}/{len(graph.nodes)}")
+    path_file_name = path.split("/")[-1]
+    print(f"| {path_file_name} | {len(graph.nodes)} | {len(graph.edges)} | {non_zero_correlation} |")
+
     node_ids = list(graph.nodes)
-    step = max(1, len(node_ids) // 10)
-    for i in range(0, len(node_ids), step):
+    step = max(1, len(node_ids) // 2)
+    # for i in range(0, len(node_ids), step):
+    #     node_id = node_ids[i]
+        
+    #     if "geometry" in graph.nodes[node_id]:
+    #         print(f"Node ID: {node_id}\nData:", json.dumps({**add_curvature(graph.nodes[node_id]), "geometry": None}, indent=2))
+    #     else:
+    #         print(f"Node ID: {node_id}\nData:")
+    #         for key in sorted(list(graph.nodes[node_id].keys())):
+    #             print(f"  {key}: {graph.nodes[node_id][key]}")
+    #     print("=" * 40)
+
+    all_highway_attr_values = {}
+    for i in range(0, len(node_ids)):
         node_id = node_ids[i]
-        print(f"Node ID: {node_id}\nData:", json.dumps({**add_curvature(graph.nodes[node_id]), "geometry": None}, indent=2))
-        # print("Node ID:", node_id, "Attribute names:", list(graph.nodes[node_id].keys()))
-        print("=" * 40)
+        highway_attr = graph.nodes[node_id].get("highway")
+        if highway_attr is not None:
+            if isinstance(highway_attr, list):
+                for val in highway_attr:
+                    all_highway_attr_values[val] = all_highway_attr_values.get(val, 0) + 1
+            else:
+                all_highway_attr_values[highway_attr] = all_highway_attr_values.get(highway_attr, 0) + 1
+    # print(f"All unique highway attribute values in this graph: {list(all_highway_attr_values)}")
+    return all_highway_attr_values
 
 # path = "./graphs/Graz_Austria_road_graph_with_popdensity.gpickle"
 # path = "processed_graphs/Graz_Austria_graph.gpickle"
-paths = [
-    './graphs/Graz_Austria_road_graph_with_popdensity.gpickle'
-    './graphs/Tokyo_Japan_road_graph_with_popdensity.gpickle'
-    './graphs/Melbourne_Australia_road_graph_with_popdensity.gpickle'
-]
+# paths = [
+#     './graphs/Graz_Austria_road_graph_with_popdensity.gpickle',
+#     './graphs/東京23区_Japan_road_graph_with_popdensity.gpickle',
+#     './graphs/Melbourne_Australia_road_graph_with_popdensity.gpickle',
+# ]
+# paths should be all files in final_graphs directory ending with .gpickle
+import os
+paths = [os.path.join("final_graphs", f) for f in os.listdir("final_graphs") if f.endswith(".pkl.gz")]
+
+
+highway_attr_values = {}
 for path in paths:
-    print(f"Analyzing graph at: {path}")
-    main(path)
-    print("#" * 80)
-    print("\n\n")
+    # print(f"Analyzing graph at: {path}")
+    curr_highway_attr_values = main(path)
+    for key, value in curr_highway_attr_values.items():
+        highway_attr_values[key] = highway_attr_values.get(key, 0) + value
+    # print("#" * 80)
+
+print("=" * 80)
+print(f"There are {len(highway_attr_values)} unique highway attribute values across all graphs.")
+print(f"All unique highway attribute values across all graphs:")
+for key, value in sorted(highway_attr_values.items(), key=lambda item: item[1], reverse=True):
+    print(f"  {key}: {value}")
+print("=" * 80)
