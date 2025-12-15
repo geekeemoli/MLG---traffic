@@ -1,17 +1,3 @@
-"""
-Population density mapper for road graphs.
-
-Two-pass assignment algorithm:
-  1. Each road -> nearest tile (within threshold)
-  2. Remaining tiles -> nearest road (within threshold)
-
-This ensures maximum coverage of population data.
-
-Usage:
-    from src.popdensity import get_density
-    G = get_density(G, csv_path, far_thresh_m=100.0)
-"""
-
 import csv
 import math
 from collections import defaultdict
@@ -26,7 +12,7 @@ except ImportError:
 print(f"Using scipy: {HAS_SCIPY}")
 
 
-def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=True, far_thresh_m=100.0, verbose=False):
+def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=False, far_thresh_m=100.0, verbose=False):
     """
     Annotate graph nodes with 'pop_density' attribute.
 
@@ -35,7 +21,7 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     G : networkx.Graph
         Line-graph where each node represents a road.
     csv_path : str
-        Path to population CSV (columns: lon, lat, population).
+        Path to population CSV.
     tile_half_ddeg : float
         Half tile size in decimal degrees (default: 1 arc-second).
     assume_sorted_by_lat : bool
@@ -65,11 +51,9 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
             return float(x), float(y)
         return None
 
-    # Check if already annotated
     if any('pop_density' in d for _, d in G.nodes(data=True)):
         return G
 
-    # Build road centers list
     centers = []
     index_to_node = []
 
@@ -83,7 +67,6 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     if not centers:
         return G
 
-    # Compute bounding box
     lons = [c[0] for c in centers]
     lats = [c[1] for c in centers]
     west = min(lons) - tile_half_ddeg
@@ -91,13 +74,30 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     south = min(lats) - tile_half_ddeg
     north = max(lats) + tile_half_ddeg
 
-    # Read CSV tiles inside bbox
     tile_pop = {}
     unique_csv_centers = {}
 
     with open(csv_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
-        lon_field, lat_field, pop_field = reader.fieldnames[:3]
+        fields = reader.fieldnames
+        
+        fields_lower = [f.lower() for f in fields]
+        lon_field = None
+        lat_field = None
+        pop_field = None
+        
+        for i, f in enumerate(fields_lower):
+            if f in ('lon', 'long', 'longitude', 'x'):
+                lon_field = fields[i]
+            elif f in ('lat', 'latitude', 'y'):
+                lat_field = fields[i]
+            #elif f in ('population', 'pop', 'value', 'count'):
+            pop_field = fields[-1]
+        
+        if lon_field is None or lat_field is None or pop_field is None:
+            print("Warning: uporabljamo deafult izbira stolpcev (en od lat al lon stolpcev ni vredu)")
+            lon_field, lat_field, pop_field = fields[:3]
+        
         seen_in_range = False
 
         for row in reader:
@@ -131,7 +131,6 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
     deg_per_m = 1.0 / 111000.0  # approximate
     far_thresh_deg = far_thresh_m * deg_per_m if far_thresh_m else None
 
-    # Total population in bbox for coverage calculation
     total_pop_bbox = sum(tile_pop.values())
 
     if HAS_SCIPY:
@@ -143,7 +142,6 @@ def get_density(G, csv_path, tile_half_ddeg=1.0/7200.0, assume_sorted_by_lat=Tru
 def _get_density_fast(G, centers, index_to_node, tile_pop, unique_csv_centers, far_thresh_deg, avg_lat, verbose, total_pop_bbox):
     """Fast version using scipy KD-Tree."""
     
-    # Build arrays
     road_coords = np.array(centers)
     tile_keys = list(unique_csv_centers.keys())
     tile_coords = np.array([unique_csv_centers[k] for k in tile_keys])
@@ -166,12 +164,19 @@ def _get_density_fast(G, centers, index_to_node, tile_pop, unique_csv_centers, f
     # Pass 1: each road -> nearest tile
     distances, indices = tile_tree.query(road_coords_scaled, k=1)
     
+    tile_road_count = defaultdict(int)
+    road_to_tile = {}  # road_idx -> tile_idx
+    
     for road_idx, (dist, tile_idx) in enumerate(zip(distances, indices)):
         if far_thresh_deg is not None and dist > far_thresh_deg:
             continue
         tiles_used.add(tile_idx)
+        tile_road_count[tile_idx] += 1
+        road_to_tile[road_idx] = tile_idx
+    
+    for road_idx, tile_idx in road_to_tile.items():
         n = index_to_node[road_idx]
-        road_assignments[n] += tile_pops[tile_idx]
+        road_assignments[n] += tile_pops[tile_idx] / tile_road_count[tile_idx]
     
     # Pass 2: remaining tiles -> nearest road
     tiles_remaining = [i for i in range(len(tile_keys)) if i not in tiles_used]
@@ -189,7 +194,6 @@ def _get_density_fast(G, centers, index_to_node, tile_pop, unique_csv_centers, f
             n = index_to_node[road_idx]
             road_assignments[n] += tile_pops[tile_idx]
     
-    # Assign pop_density
     total_pop_assigned = 0.0
     for n, pop in road_assignments.items():
         G.nodes[n]['pop_density'] = pop
@@ -221,6 +225,10 @@ def _get_density_slow(G, centers, index_to_node, tile_pop, unique_csv_centers, f
 
     tiles_used = set()
     road_assignments = defaultdict(float)
+    
+    # First pass: find nearest tile for each road and count roads per tile
+    tile_road_count = defaultdict(int)
+    road_to_tile = {}  # idx -> tile_key
 
     for idx, (lon, lat) in enumerate(centers):
         n = index_to_node[idx]
@@ -230,7 +238,12 @@ def _get_density_slow(G, centers, index_to_node, tile_pop, unique_csv_centers, f
         if far_thresh_deg is not None and math.sqrt(d2) > far_thresh_deg:
             continue
         tiles_used.add(key)
-        road_assignments[n] += tile_pop.get(key, 0.0)
+        tile_road_count[key] += 1
+        road_to_tile[idx] = key
+    
+    for idx, key in road_to_tile.items():
+        n = index_to_node[idx]
+        road_assignments[n] += tile_pop.get(key, 0.0) / tile_road_count[key]
 
     def _find_nearest_road(tlon, tlat):
         best_idx, best_d2 = None, None

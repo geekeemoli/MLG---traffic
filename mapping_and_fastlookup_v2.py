@@ -5,7 +5,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from collections import defaultdict
 from shapely.geometry import Point, LineString
-from popdensityV3 import *
+from popdensityV5 import *
 
 def map_detectors_to_road_graph(
     detector_coords_file: str = "detectors_public.csv",

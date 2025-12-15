@@ -1,6 +1,6 @@
 import osmnx as ox
 import networkx as nx
-from src.popdensityV2 import get_density
+from src.popdensityV5 import get_density
 from shapely.geometry import Point, LineString
 
 #, "Munich, Germany"
