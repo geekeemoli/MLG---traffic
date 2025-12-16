@@ -14,7 +14,7 @@ Data(edge_index=[2, 30845], highway=[11256], lanes=[11256], maxspeed=[11256], le
 ### Each node represent a road segment and every single one contains the following attributes:
 * `correlation` (float)- correlation between flow and occupancy of a given road segment (-1 is a full traffic jam, 0 is neutral and 1 is perfect traffic)
 * `curvature` (float) - measure of the curvature a road has (0 is no curvature, higher values represent higher curvature)
-* `highway` (string) - See [this](#all-highway-parameter-values-and-their-frequencies)
+* `highway` (string | List[string]) - See [this](#all-highway-parameter-values-and-their-frequencies)
 * `lanes` (float) - Average number of lanes along the road
 * `length` (float) - Length of the road in meters.
 * `maxspeed` (float) - Max speed in km/h
