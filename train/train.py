@@ -15,7 +15,7 @@ from prep_dataset import load_dataset
 RAND_SEED = 42
 
 # data specific:
-NUM_CITIES = 1                  # set to None to use all cities
+NUM_CITIES = None               # set to None to use all cities
 NUM_HIGHWAY_CLASSES = 7         # number of most common highway types to consider (rest will be "other" class)
 VAL_RATIO = 0.05
 TEST_RATIO = 0.1
@@ -27,6 +27,7 @@ NUM_HEADS = 4
 DROPOUT = 0.2
 
 # training specific:
+RESULTS_DIR = './results_v4'
 LEARNING_RATE = 3e-4
 NUM_EPOCHS = 100
 
@@ -94,10 +95,9 @@ def format_dataset(num_cities=None, num_highway_classes = 7):
     return dataset
 #endregion
 # ----------------------------
-dataset = format_dataset(num_cities=NUM_CITIES, num_highway_classes=NUM_HIGHWAY_CLASSES)
+dataset = format_dataset(num_cities=NUM_CITIES, num_highway_classes=NUM_HIGHWAY_CLASSES) # <--- adds 'x' attribute to each graph with numerical node features
 
 
-RESULTS_DIR = './results_v0'
 # ----------------------------
 #region Create results directory
 # if os.path.exists(RESULTS_DIR):
@@ -166,7 +166,7 @@ def train_val_test_split(dataset, val_ratio=0.05, test_ratio=0.05, verbose=True)
     return dataset
 #endregion
 # ----------------------------
-dataset = train_val_test_split(dataset, val_ratio=VAL_RATIO, test_ratio=TEST_RATIO)
+dataset = train_val_test_split(dataset, val_ratio=VAL_RATIO, test_ratio=TEST_RATIO) # <--- adds train_mask, val_mask, test_mask to each graph
 
 
 # ----------------------------
@@ -210,21 +210,91 @@ for city in dataset:
     dataset[city] = dataset[city].to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
 
-def loss_fn(logits, target, epsilon=0.02):
+def loss_fn(logits, target, split_mask=None, epsilon=0.02, return_stats=False):
     """
     Cross entropy loss where sigmoid(logits) is compared with (target+1)/2 and at each position the loss is weighted by abs(target)+epsilon, but only for nodes where target is not zero.
     - logits: [ num_nodes ] output logits tensor
     - target: [ num_nodes ] tensor with true correlation values in the range [-1, 1] (0 for nodes without traffic data)
+    - mask: [ num_nodes, ]
 
     Returns: scalar loss value
     """
-    mask = target != 0
+    mask = (target != 0) & split_mask if split_mask is not None else (target != 0)
     logits = logits[mask]
     target = target[mask]
 
     weights = torch.abs(target) + epsilon
     target_scaled = (target + 1) / 2
     loss = F.binary_cross_entropy_with_logits(logits, target_scaled, weight=weights, reduction='mean')
+
+    if return_stats:
+        with torch.no_grad():
+            preds = (torch.sigmoid(logits) >= 0.5).float()
+            targets_binary = (target_scaled >= 0.5).float()
+            stats = {
+                "tp": ((preds == 1) & (targets_binary == 1)).sum().item(),
+                "tn": ((preds == 0) & (targets_binary == 0)).sum().item(),
+                "fp": ((preds == 1) & (targets_binary == 0)).sum().item(),
+                "fn": ((preds == 0) & (targets_binary == 1)).sum().item(),
+            }
+        return loss, stats
+
     return loss
+
+def eval_metric(stats, method="accuracy"):
+    if method == "accuracy":
+        correct = stats["tp"] + stats["tn"]
+        total = stats["tp"] + stats["tn"] + stats["fp"] + stats["fn"]
+        return correct / total if total > 0 else 0.0
+    elif method == "precision":
+        return stats["tp"] / (stats["tp"] + stats["fp"]) if (stats["tp"] + stats["fp"]) > 0 else 0.0
+    elif method == "recall":
+        return stats["tp"] / (stats["tp"] + stats["fn"]) if (stats["tp"] + stats["fn"]) > 0 else 0.0
+    elif method == "f1":
+        precision = eval_metric(stats, method="precision")
+        recall = eval_metric(stats, method="recall")
+        return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+
+#endregion
+# ----------------------------
+
+# ----------------------------
+#region Training loop
+# ----------------------------
+num_cities = len(dataset.keys())
+for epoch in range(1, NUM_EPOCHS + 1):
+    total_train_loss, total_val_loss = 0, 0
+    summarised_train_stats, summarised_val_stats = {"tp":0, "tn":0, "fp":0, "fn":0}, {"tp":0, "tn":0, "fp":0, "fn":0}
+    for city, graph in dataset.items():
+        optimizer.zero_grad()
+
+        model.train()
+        out = model(graph).squeeze()  # [ num_nodes ]
+        train_loss, train_stats = loss_fn(out, graph.correlation, split_mask=graph.train_mask, return_stats=True)
+        
+        train_loss.backward()
+        optimizer.step()
+
+        model.eval()
+        with torch.no_grad():
+            val_out = model(graph).squeeze()  # [ num_nodes ]
+            val_loss, val_stats = loss_fn(val_out, graph.correlation, split_mask=graph.val_mask, return_stats=True)
+
+        total_train_loss += train_loss.item()
+        total_val_loss += val_loss.item()
+        summarised_train_stats = { k: summarised_train_stats[k] + train_stats[k] for k in summarised_train_stats }
+        summarised_val_stats = { k: summarised_val_stats[k] + val_stats[k] for k in summarised_val_stats }
+
+    avg_train_loss = total_train_loss / num_cities
+    avg_val_loss = total_val_loss / num_cities
+    # train_f1 = eval_metric(summarised_train_stats, method="f1")
+    # val_f1 = eval_metric(summarised_val_stats, method="f1")
+    train_precision = eval_metric(summarised_train_stats, method="precision")
+    train_recall = eval_metric(summarised_train_stats, method="recall")
+    train_np_ratio = (summarised_train_stats['tn'] + summarised_train_stats['fn']) / (summarised_train_stats['tp'] + summarised_train_stats['fp'] + 1e-6)
+    val_precision = eval_metric(summarised_val_stats, method="precision")
+    val_recall = eval_metric(summarised_val_stats, method="recall")
+    val_np_ratio = (summarised_val_stats['tn'] + summarised_val_stats['fn']) / (summarised_val_stats['tp'] + summarised_val_stats['fp'] + 1e-6)
+    print(f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (precision={train_precision:.4f}; recall={train_recall:.4f}; N/P={train_np_ratio:.4f}), Val Loss: {avg_val_loss:.4f} (precision={val_precision:.4f}; recall={val_recall:.4f}; N/P={val_np_ratio:.4f})")
 #endregion
 # ----------------------------
