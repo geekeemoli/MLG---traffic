@@ -15,13 +15,20 @@ from prep_dataset import load_dataset
 RAND_SEED = 42
 
 # data specific:
-NUM_CITIES = 2                  # set to None to use all cities
+NUM_CITIES = 1                  # set to None to use all cities
 NUM_HIGHWAY_CLASSES = 7         # number of most common highway types to consider (rest will be "other" class)
 VAL_RATIO = 0.05
 TEST_RATIO = 0.1
 
 # model specific:
+HIDDEN_DIM = 128
+NUM_LAYERS = 3
+NUM_HEADS = 4
+DROPOUT = 0.2
 
+# training specific:
+LEARNING_RATE = 3e-4
+NUM_EPOCHS = 100
 
 #endregion
 # ----------------------------
@@ -99,6 +106,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 #endregion
 # ----------------------------
 
+
 # ----------------------------
 #region Train/Val/Test split
 # ----------------------------
@@ -160,6 +168,7 @@ def train_val_test_split(dataset, val_ratio=0.05, test_ratio=0.05, verbose=True)
 # ----------------------------
 dataset = train_val_test_split(dataset, val_ratio=VAL_RATIO, test_ratio=TEST_RATIO)
 
+
 # ----------------------------
 #region Model definition
 # ----------------------------
@@ -185,8 +194,37 @@ class GATModel(nn.Module):
 model = GATModel(
     in_channels=dataset[next(iter(dataset))].x.size(-1),
     out_channels=1,
-    hidden_channels=128,
-    num_layers=3,
-    heads=4,
-    dropout=0.2,
+    hidden_channels=HIDDEN_DIM,
+    num_layers=NUM_LAYERS,
+    heads=NUM_HEADS,
+    dropout=DROPOUT,
 )
+
+# ----------------------------
+#region Training setup
+# ----------------------------
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+model = model.to(device)
+for city in dataset:
+    dataset[city] = dataset[city].to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
+
+def loss_fn(logits, target, epsilon=0.02):
+    """
+    Cross entropy loss where sigmoid(logits) is compared with (target+1)/2 and at each position the loss is weighted by abs(target)+epsilon, but only for nodes where target is not zero.
+    - logits: [ num_nodes ] output logits tensor
+    - target: [ num_nodes ] tensor with true correlation values in the range [-1, 1] (0 for nodes without traffic data)
+
+    Returns: scalar loss value
+    """
+    mask = target != 0
+    logits = logits[mask]
+    target = target[mask]
+
+    weights = torch.abs(target) + epsilon
+    target_scaled = (target + 1) / 2
+    loss = F.binary_cross_entropy_with_logits(logits, target_scaled, weight=weights, reduction='mean')
+    return loss
+#endregion
+# ----------------------------
