@@ -6,50 +6,80 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.nn.models import GAT
 import os
 from tqdm import tqdm
+import json
 
 from prep_dataset import load_dataset
 
-# ----------------------------
+# --------------------------------------------------------
 #region HYPERPARAMETERS
-# ----------------------------
+# --------------------------------------------------------
 RAND_SEED = 42
 
 # data specific:
 NUM_CITIES = None               # set to None to use all cities
 NUM_HIGHWAY_CLASSES = 7         # number of most common highway types to consider (rest will be "other" class)
-VAL_RATIO = 0.05
-TEST_RATIO = 0.1
+VAL_RATIO = 0.1
+TEST_RATIO = 0.0
 
 # model specific:
 HIDDEN_DIM = 128
 NUM_LAYERS = 3
 NUM_HEADS = 4
-DROPOUT = 0.2
+DROPOUT = 0
 
 # training specific:
-RESULTS_DIR = './results_v4'
-LEARNING_RATE = 3e-4
-NUM_EPOCHS = 100
+RESULTS_DIR = './results_v9'
+LEARNING_RATE = 1e-2
+WEIGHT_DECAY = 1e-5
+NUM_EPOCHS = 300
+LOSS_WEIGHT = 2.5 # weight for the positive class (traffic jam) in the loss function
+MODEL_SAVE_PATH = f"{RESULTS_DIR}/gat_model.pth"
+LOGS_FILE = f"{RESULTS_DIR}/training_log.txt"
 
+hyperparameters = {
+    "RAND_SEED": RAND_SEED,
+    "NUM_CITIES": NUM_CITIES,
+    "NUM_HIGHWAY_CLASSES": NUM_HIGHWAY_CLASSES,
+    "VAL_RATIO": VAL_RATIO,
+    "TEST_RATIO": TEST_RATIO,
+    "HIDDEN_DIM": HIDDEN_DIM,
+    "NUM_LAYERS": NUM_LAYERS,
+    "NUM_HEADS": NUM_HEADS,
+    "DROPOUT": DROPOUT,
+    "RESULTS_DIR": RESULTS_DIR,
+    "LEARNING_RATE": LEARNING_RATE,
+    "WEIGHT_DECAY": WEIGHT_DECAY,
+    "NUM_EPOCHS": NUM_EPOCHS,
+    "MODEL_SAVE_PATH": MODEL_SAVE_PATH,
+    "LOGS_FILE": LOGS_FILE,
+}
 #endregion
-# ----------------------------
+# --------------------------------------------------------
 
+# --------------------------------------------------------
+#region Create results directory and save hyperparameters
+# if os.path.exists(RESULTS_DIR):
+#     raise FileExistsError(f"Results directory {RESULTS_DIR} already exists. Please remove it or choose a different name.")
+os.makedirs(RESULTS_DIR, exist_ok=True)
+with open(f"{RESULTS_DIR}/hyperparameters.json", "w") as f:
+    json.dump(hyperparameters, f, indent=4)
+#endregion
+# --------------------------------------------------------
 
-# ----------------------------
+# --------------------------------------------------------
 #region Random seed
-# ----------------------------
+# --------------------------------------------------------
 def seed_everything(seed: int = 42):
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-#endregion
-# ----------------------------
 seed_everything(RAND_SEED)
+#endregion
+# --------------------------------------------------------
 
-
-# ----------------------------
+# --------------------------------------------------------
 #region  Load dataset
-# ----------------------------
+# --------------------------------------------------------
 class FeatureBuilder(nn.Module):
     """
     Builds numerical and multi-hot encoded features for each node. The nodes are assigned the new attribute 'x' with these features:
@@ -94,22 +124,12 @@ def format_dataset(num_cities=None, num_highway_classes = 7):
         dataset[city] = feature_builder(graph)
     return dataset
 #endregion
-# ----------------------------
+# --------------------------------------------------------
 dataset = format_dataset(num_cities=NUM_CITIES, num_highway_classes=NUM_HIGHWAY_CLASSES) # <--- adds 'x' attribute to each graph with numerical node features
 
-
-# ----------------------------
-#region Create results directory
-# if os.path.exists(RESULTS_DIR):
-#     raise FileExistsError(f"Results directory {RESULTS_DIR} already exists. Please remove it or choose a different name.")
-os.makedirs(RESULTS_DIR, exist_ok=True)
-#endregion
-# ----------------------------
-
-
-# ----------------------------
-#region Train/Val/Test split
-# ----------------------------
+# --------------------------------------------------------
+#region Train/Val/Test split - train_val_test_split(dataset, val_ratio, test_ratio)
+# --------------------------------------------------------
 def add_masks(graph, city_name, save_dir, val_ratio=0.05, test_ratio=0.05):
     if os.path.exists(save_dir):
         mask = torch.load(save_dir)
@@ -165,13 +185,12 @@ def train_val_test_split(dataset, val_ratio=0.05, test_ratio=0.05, verbose=True)
 
     return dataset
 #endregion
-# ----------------------------
+# --------------------------------------------------------
 dataset = train_val_test_split(dataset, val_ratio=VAL_RATIO, test_ratio=TEST_RATIO) # <--- adds train_mask, val_mask, test_mask to each graph
 
-
-# ----------------------------
-#region Model definition
-# ----------------------------
+# --------------------------------------------------------
+#region Model definition - create_model(dataset)
+# --------------------------------------------------------
 class GATModel(nn.Module):
     def __init__(self, in_channels, out_channels, hidden_channels=64, num_layers=3, heads=4, dropout=0.2):
         super(GATModel, self).__init__()
@@ -189,53 +208,125 @@ class GATModel(nn.Module):
         x, edge_index = data.x, data.edge_index
         out = self.gat(x, edge_index)
         return out
-#endregion
-# ----------------------------
-model = GATModel(
-    in_channels=dataset[next(iter(dataset))].x.size(-1),
-    out_channels=1,
-    hidden_channels=HIDDEN_DIM,
-    num_layers=NUM_LAYERS,
-    heads=NUM_HEADS,
-    dropout=DROPOUT,
-)
 
-# ----------------------------
-#region Training setup
-# ----------------------------
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
-model = model.to(device)
-for city in dataset:
-    dataset[city] = dataset[city].to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
+def create_model(dataset):
+    model = GATModel(
+        in_channels=dataset[next(iter(dataset))].x.size(-1),
+        out_channels=1,
+        hidden_channels=HIDDEN_DIM,
+        num_layers=NUM_LAYERS,
+        heads=NUM_HEADS,
+        dropout=DROPOUT,
+    )
+
+    # print number of parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Model created with {num_params} trainable parameters.")
+
+    return model
+#endregion
+# --------------------------------------------------------
+
+# --------------------------------------------------------
+#region Training setup - setup_training(dataset), loss_fn(...), eval_metric(...)
+# --------------------------------------------------------
+def setup_training(dataset):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+
+    model = create_model(dataset)
+    model = model.to(device)
+
+    for city in dataset:
+        dataset[city] = dataset[city].to(device)
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
+
+    return dataset, model, optimizer, device
+
+#region old loss fn
+# def loss_fn(logits, target, split_mask=None, epsilon=0.02, return_stats=False):
+#     """
+#     Cross entropy loss where sigmoid(logits) is compared with (target+1)/2 and at each position the loss is weighted by abs(target)+epsilon, but only for nodes where target is not zero.
+#     - logits: [ num_nodes ] output logits tensor
+#     - target: [ num_nodes ] tensor with true correlation values in the range [-1, 1] (0 for nodes without traffic data)
+#     - mask: [ num_nodes, ]
+
+#     Returns: scalar loss value
+#     """
+#     mask = (target != 0) & split_mask if split_mask is not None else (target != 0)
+#     logits = logits[mask]
+#     target = target[mask]
+
+#     confidence_weights = torch.abs(target) + epsilon
+#     confidence_weights = confidence_weights / confidence_weights.mean()
+
+#     traffic_jam_count = (target < 0).sum().item()
+#     traffic_jam_weight = min(1 - (traffic_jam_count / len(target)), 0.9)
+
+#     class_weights = torch.where(target >= 0, 1.0 - traffic_jam_weight, traffic_jam_weight)
+
+#     weights = confidence_weights * class_weights
+#     target_scaled = (target + 1) / 2
+#     loss = F.binary_cross_entropy_with_logits(logits, target_scaled, weight=weights, reduction='mean')
+
+#     if return_stats:
+#         with torch.no_grad():
+#             # (inverting positive and negative classes for better interpretability)
+#             preds = (torch.sigmoid(logits) <= 0.5).float()
+#             targets_binary = (target_scaled <= 0.5).float()
+#             stats = {
+#                 "tp": ((preds == 1) & (targets_binary == 1)).sum().item(),
+#                 "tn": ((preds == 0) & (targets_binary == 0)).sum().item(),
+#                 "fp": ((preds == 1) & (targets_binary == 0)).sum().item(),
+#                 "fn": ((preds == 0) & (targets_binary == 1)).sum().item(),
+#             }
+#         return loss, stats
+
+#     return loss
+#endregion
 
 def loss_fn(logits, target, split_mask=None, epsilon=0.02, return_stats=False):
-    """
-    Cross entropy loss where sigmoid(logits) is compared with (target+1)/2 and at each position the loss is weighted by abs(target)+epsilon, but only for nodes where target is not zero.
-    - logits: [ num_nodes ] output logits tensor
-    - target: [ num_nodes ] tensor with true correlation values in the range [-1, 1] (0 for nodes without traffic data)
-    - mask: [ num_nodes, ]
+    mask = (target != 0)
+    if split_mask is not None:
+        mask = mask & split_mask
 
-    Returns: scalar loss value
-    """
-    mask = (target != 0) & split_mask if split_mask is not None else (target != 0)
     logits = logits[mask]
     target = target[mask]
 
-    weights = torch.abs(target) + epsilon
-    target_scaled = (target + 1) / 2
-    loss = F.binary_cross_entropy_with_logits(logits, target_scaled, weight=weights, reduction='mean')
+    # jam is the positive class
+    y = (target < 0).float()  # -1 -> 1 (jam), +1 -> 0 (no jam)
+
+    # confidence weights (optional)
+    conf = target.abs() + epsilon
+    conf = conf / conf.mean().clamp_min(1e-12)
+
+    # class weights: inverse frequency (upweight minority)
+    pos = y.sum()
+    neg = (1 - y).sum()
+    if (pos == 0 or neg == 0) and False:
+        # Only one class present: skip class-balancing for this graph/split
+        cls_w = torch.ones_like(y)
+    else:
+        # w_pos = min((neg / pos).detach(), 10)
+        # w_neg = min((pos / neg).detach(), 10)
+        w_pos = LOSS_WEIGHT
+        w_neg = 1/LOSS_WEIGHT
+        cls_w = torch.where(y == 1, w_pos, w_neg)
+
+    weights = conf * cls_w
+
+    per_elem = F.binary_cross_entropy_with_logits(logits, y, weight=weights, reduction="none")
+    loss = per_elem.sum() / weights.sum().clamp_min(1e-12)
 
     if return_stats:
         with torch.no_grad():
             preds = (torch.sigmoid(logits) >= 0.5).float()
-            targets_binary = (target_scaled >= 0.5).float()
             stats = {
-                "tp": ((preds == 1) & (targets_binary == 1)).sum().item(),
-                "tn": ((preds == 0) & (targets_binary == 0)).sum().item(),
-                "fp": ((preds == 1) & (targets_binary == 0)).sum().item(),
-                "fn": ((preds == 0) & (targets_binary == 1)).sum().item(),
+                "tp": ((preds == 1) & (y == 1)).sum().item(),
+                "tn": ((preds == 0) & (y == 0)).sum().item(),
+                "fp": ((preds == 1) & (y == 0)).sum().item(),
+                "fn": ((preds == 0) & (y == 1)).sum().item(),
             }
         return loss, stats
 
@@ -254,47 +345,86 @@ def eval_metric(stats, method="accuracy"):
         precision = eval_metric(stats, method="precision")
         recall = eval_metric(stats, method="recall")
         return 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    else:
+        raise ValueError(f"Unknown evaluation method: {method}")
 
-#endregion
-# ----------------------------
-
-# ----------------------------
-#region Training loop
-# ----------------------------
-num_cities = len(dataset.keys())
-for epoch in range(1, NUM_EPOCHS + 1):
-    total_train_loss, total_val_loss = 0, 0
-    summarised_train_stats, summarised_val_stats = {"tp":0, "tn":0, "fp":0, "fn":0}, {"tp":0, "tn":0, "fp":0, "fn":0}
+def print_dataset_stats(dataset):
+    pos_total, neg_total = 0, 0
+    print(f"{'City:':<25} | {'Positive samples (jams)':<30} | {'Negative samples (no jams)':<30}")
+    print("-" * 90)
     for city, graph in dataset.items():
-        optimizer.zero_grad()
+        mask = graph.train_mask | graph.val_mask | graph.test_mask
+        target = graph.correlation[mask]
+        pos = (target < 0).sum().item()
+        neg = (target > 0).sum().item()
+        pos_total += pos
+        neg_total += neg
+        print(f"{city:<25} | {pos:<30} | {neg:<30}")
+    print(f"Overall dataset - Positive samples (jams): {pos_total}, Negative samples (no jams): {neg_total}")
+#endregion
+# --------------------------------------------------------
 
-        model.train()
-        out = model(graph).squeeze()  # [ num_nodes ]
-        train_loss, train_stats = loss_fn(out, graph.correlation, split_mask=graph.train_mask, return_stats=True)
+# --------------------------------------------------------
+#region Training loop - train(dataset, log_file=None)
+# --------------------------------------------------------
+def train(dataset, log_file=None):
+    dataset, model, optimizer, device = setup_training(dataset)
+
+    print_dataset_stats(dataset)
+
+    num_cities = len(dataset.keys())
+
+    if log_file is not None:
+        log_f = open(log_file, "w")
+    else:
+        log_f = None
+
+    for epoch in range(1, NUM_EPOCHS + 1):
+        optimizer.zero_grad()
         
-        train_loss.backward()
+        total_train_loss, total_val_loss = 0, 0
+        summarised_train_stats, summarised_val_stats = {"tp":0, "tn":0, "fp":0, "fn":0}, {"tp":0, "tn":0, "fp":0, "fn":0}
+        for city, graph in dataset.items():
+
+            model.train()
+            out = model(graph).squeeze()
+            train_loss, train_stats = loss_fn(out, graph.correlation, split_mask=graph.train_mask, return_stats=True)
+
+            model.eval()
+            with torch.no_grad():
+                val_out = model(graph).squeeze()
+                val_loss, val_stats = loss_fn(val_out, graph.correlation, split_mask=graph.val_mask, return_stats=True)
+
+            total_train_loss += train_loss
+            total_val_loss += val_loss.item()
+            summarised_train_stats = { k: summarised_train_stats[k] + train_stats[k] for k in summarised_train_stats }
+            summarised_val_stats = { k: summarised_val_stats[k] + val_stats[k] for k in summarised_val_stats }
+
+        total_train_loss.backward()
         optimizer.step()
 
-        model.eval()
-        with torch.no_grad():
-            val_out = model(graph).squeeze()  # [ num_nodes ]
-            val_loss, val_stats = loss_fn(val_out, graph.correlation, split_mask=graph.val_mask, return_stats=True)
+        avg_train_loss = total_train_loss.item() / num_cities
+        avg_val_loss = total_val_loss / num_cities
+        print(
+            f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (TP, FP, TN, FN)=({summarised_train_stats['tp']}, {summarised_train_stats['fp']}, {summarised_train_stats['tn']}, {summarised_train_stats['fn']}), Val Loss: {avg_val_loss:.4f} (TP, FP, TN, FN)=({summarised_val_stats['tp']}, {summarised_val_stats['fp']}, {summarised_val_stats['tn']}, {summarised_val_stats['fn']})",
+            file=log_f
+        )
+    
+    if log_f is not None:
+        log_f.close()
+    
+    return model
 
-        total_train_loss += train_loss.item()
-        total_val_loss += val_loss.item()
-        summarised_train_stats = { k: summarised_train_stats[k] + train_stats[k] for k in summarised_train_stats }
-        summarised_val_stats = { k: summarised_val_stats[k] + val_stats[k] for k in summarised_val_stats }
-
-    avg_train_loss = total_train_loss / num_cities
-    avg_val_loss = total_val_loss / num_cities
-    # train_f1 = eval_metric(summarised_train_stats, method="f1")
-    # val_f1 = eval_metric(summarised_val_stats, method="f1")
-    train_precision = eval_metric(summarised_train_stats, method="precision")
-    train_recall = eval_metric(summarised_train_stats, method="recall")
-    train_np_ratio = (summarised_train_stats['tn'] + summarised_train_stats['fn']) / (summarised_train_stats['tp'] + summarised_train_stats['fp'] + 1e-6)
-    val_precision = eval_metric(summarised_val_stats, method="precision")
-    val_recall = eval_metric(summarised_val_stats, method="recall")
-    val_np_ratio = (summarised_val_stats['tn'] + summarised_val_stats['fn']) / (summarised_val_stats['tp'] + summarised_val_stats['fp'] + 1e-6)
-    print(f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (precision={train_precision:.4f}; recall={train_recall:.4f}; N/P={train_np_ratio:.4f}), Val Loss: {avg_val_loss:.4f} (precision={val_precision:.4f}; recall={val_recall:.4f}; N/P={val_np_ratio:.4f})")
 #endregion
-# ----------------------------
+# --------------------------------------------------------
+trained_model = train(dataset, log_file=LOGS_FILE)
+
+# --------------------------------------------------------
+#region Save the trained model
+# --------------------------------------------------------
+def save_model(model, save_path):
+    torch.save(model.state_dict(), save_path)
+    print(f"Model saved to {save_path}")
+#endregion
+# --------------------------------------------------------
+save_model(trained_model, MODEL_SAVE_PATH)

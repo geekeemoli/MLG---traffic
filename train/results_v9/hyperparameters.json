@@ -1,0 +1,17 @@
+{
+    "RAND_SEED": 42,
+    "NUM_CITIES": 1,
+    "NUM_HIGHWAY_CLASSES": 7,
+    "VAL_RATIO": 0.1,
+    "TEST_RATIO": 0.0,
+    "HIDDEN_DIM": 128,
+    "NUM_LAYERS": 3,
+    "NUM_HEADS": 4,
+    "DROPOUT": 0,
+    "RESULTS_DIR": "./results_v9",
+    "LEARNING_RATE": 0.01,
+    "WEIGHT_DECAY": 1e-05,
+    "NUM_EPOCHS": 300,
+    "MODEL_SAVE_PATH": "./results_v9/gat_model.pth",
+    "LOGS_FILE": "./results_v9/training_log.txt"
+}
