@@ -22,18 +22,20 @@ VAL_RATIO = 0.1
 TEST_RATIO = 0.0
 
 # model specific:
-HIDDEN_DIM = 128
+MODEL="mlp_baseline"
+N_MODELS = 1                    # number of GAT models in the ensemble
+HIDDEN_DIM = 64
 NUM_LAYERS = 3
 NUM_HEADS = 4
 DROPOUT = 0
 
 # training specific:
-RESULTS_DIR = './results_v9'
+RESULTS_DIR = './result_mlp_baseline_v1'
 LEARNING_RATE = 1e-2
 WEIGHT_DECAY = 1e-5
-NUM_EPOCHS = 300
+NUM_EPOCHS = 500
 LOSS_WEIGHT = 2.5 # weight for the positive class (traffic jam) in the loss function
-MODEL_SAVE_PATH = f"{RESULTS_DIR}/gat_model.pth"
+MODEL_SAVE_PATH = f"{RESULTS_DIR}/model.pth"
 LOGS_FILE = f"{RESULTS_DIR}/training_log.txt"
 
 hyperparameters = {
@@ -42,6 +44,8 @@ hyperparameters = {
     "NUM_HIGHWAY_CLASSES": NUM_HIGHWAY_CLASSES,
     "VAL_RATIO": VAL_RATIO,
     "TEST_RATIO": TEST_RATIO,
+    "MODEL": MODEL,
+    "N_MODELS": N_MODELS,
     "HIDDEN_DIM": HIDDEN_DIM,
     "NUM_LAYERS": NUM_LAYERS,
     "NUM_HEADS": NUM_HEADS,
@@ -189,28 +193,35 @@ def train_val_test_split(dataset, val_ratio=0.05, test_ratio=0.05, verbose=True)
 dataset = train_val_test_split(dataset, val_ratio=VAL_RATIO, test_ratio=TEST_RATIO) # <--- adds train_mask, val_mask, test_mask to each graph
 
 # --------------------------------------------------------
-#region Model definition - create_model(dataset)
+#region GAT Model definition - create_gat_model(dataset)
 # --------------------------------------------------------
-class GATModel(nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_channels=64, num_layers=3, heads=4, dropout=0.2):
-        super(GATModel, self).__init__()
-        self.gat = GAT(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            hidden_channels=hidden_channels,
-            num_layers=num_layers,
-            heads=heads,
-            dropout=dropout,
-            v2=True,
-        )
+class GATModelEnsemble(nn.Module):
+    def __init__(self, n_models, in_channels, out_channels, hidden_channels=64, num_layers=3, heads=4, dropout=0.2):
+        super(GATModelEnsemble, self).__init__()
+        
+        self.models = nn.ModuleList([
+            GAT(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                hidden_channels=hidden_channels,
+                num_layers=num_layers,
+                heads=heads,
+                dropout=dropout,
+                v2=True,
+            ) for _ in range(n_models)
+        ])
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-        out = self.gat(x, edge_index)
+        out = []
+        for model in self.models:
+            out.append(model(x, edge_index).squeeze())
+        out = torch.mean(torch.stack(out), dim=0)
         return out
 
-def create_model(dataset):
-    model = GATModel(
+def create_gat_model(dataset):
+    model = GATModelEnsemble(
+        n_models=N_MODELS,
         in_channels=dataset[next(iter(dataset))].x.size(-1),
         out_channels=1,
         hidden_channels=HIDDEN_DIM,
@@ -228,9 +239,51 @@ def create_model(dataset):
 # --------------------------------------------------------
 
 # --------------------------------------------------------
+#region MLP Baseline Model definition - create_baseline_model(dataset)
+# --------------------------------------------------------
+class MLPBaselineModel(nn.Module):
+    def __init__(self, in_channels, hidden_channels=64, num_layers=3, dropout=0.2):
+        super(MLPBaselineModel, self).__init__()
+        
+        layers = []
+        layers.append(nn.Linear(in_channels, hidden_channels))
+        layers.append(nn.ReLU())
+        layers.append(nn.Dropout(dropout))
+        
+        for _ in range(num_layers - 2):
+            layers.append(nn.Linear(hidden_channels, hidden_channels))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+        
+        layers.append(nn.Linear(hidden_channels, 1))
+        
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, data):
+        x = data.x
+        out = self.mlp(x).squeeze()
+        return out
+
+def create_mlp_baseline_model(dataset):
+    model = MLPBaselineModel(
+        in_channels=dataset[next(iter(dataset))].x.size(-1),
+        hidden_channels=HIDDEN_DIM,
+        num_layers=NUM_LAYERS,
+        dropout=DROPOUT,
+    )
+
+    # print number of parameters
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Baseline model created with {num_params} trainable parameters.")
+
+    return model
+#endregion
+# --------------------------------------------------------
+
+# --------------------------------------------------------
 #region Training setup - setup_training(dataset), loss_fn(...), eval_metric(...)
 # --------------------------------------------------------
-def setup_training(dataset):
+def setup_training(dataset, create_model):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
 
@@ -367,8 +420,8 @@ def print_dataset_stats(dataset):
 # --------------------------------------------------------
 #region Training loop - train(dataset, log_file=None)
 # --------------------------------------------------------
-def train(dataset, log_file=None):
-    dataset, model, optimizer, device = setup_training(dataset)
+def train(dataset, create_model, log_file=None):
+    dataset, model, optimizer, device = setup_training(dataset, create_model)
 
     print_dataset_stats(dataset)
 
@@ -379,7 +432,7 @@ def train(dataset, log_file=None):
     else:
         log_f = None
 
-    for epoch in range(1, NUM_EPOCHS + 1):
+    for epoch in tqdm(range(1, NUM_EPOCHS + 1)):
         optimizer.zero_grad()
         
         total_train_loss, total_val_loss = 0, 0
@@ -417,7 +470,8 @@ def train(dataset, log_file=None):
 
 #endregion
 # --------------------------------------------------------
-trained_model = train(dataset, log_file=LOGS_FILE)
+create_model = create_gat_model if MODEL == "gat_ensemble" else create_mlp_baseline_model
+trained_model = train(dataset, create_model=create_model, log_file=LOGS_FILE)
 
 # --------------------------------------------------------
 #region Save the trained model

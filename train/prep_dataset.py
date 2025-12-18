@@ -21,6 +21,9 @@ def load_dataset(max_cities=None):
     if max_cities is not None:
         file_list = file_list[:max_cities]
 
+    skip_cities = ["Melbourne", "Japan"]
+    file_list = [f for f in file_list if not any(skip_city in f for skip_city in skip_cities)]
+
     for filename in tqdm(file_list, desc="Loading graphs"):
         if filename.endswith(".pkl.gz"):
             city_name = filename.replace("_graph.pkl.gz", "")
