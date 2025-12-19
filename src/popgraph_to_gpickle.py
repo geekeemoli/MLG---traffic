@@ -2,7 +2,7 @@ import os
 import csv
 import osmnx as ox
 import networkx as nx
-from src import popdensityV5 as p
+import popdensityV5 as p
 from shapely.geometry import LineString
 import time
 import pickle
@@ -10,8 +10,8 @@ import sys
 
 # Base directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-POP_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "population_data")
-LOG_FILE = os.path.join(SCRIPT_DIR, "datacoll_log.txt")
+POP_DATA_DIR = os.path.join(SCRIPT_DIR, "..", "data", "population_data")
+LOG_FILE = os.path.join(SCRIPT_DIR, "..", "datacoll_log.txt")
 
 # Custom class to write to both terminal and file
 class Logger:
@@ -135,7 +135,7 @@ cities = [
 # print(f"Bounds: {gdf.total_bounds}")
 
 for city in cities:
-    output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+    output_path = os.path.join(SCRIPT_DIR, '..', 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
     if os.path.exists(output_path):
         print(f"Graph with population density for {city} already exists at {output_path}, skipping...\n")
         continue
@@ -168,7 +168,7 @@ for city in cities:
     print(f"Using population data: {csv_path}")
     graph_popd = p.get_density(road_G, csv_path, verbose=True)
 
-    output_path = os.path.join(SCRIPT_DIR, 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+    output_path = os.path.join(SCRIPT_DIR, '..', 'data', 'graphs', f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "wb") as f:
         pickle.dump(graph_popd, f, protocol=pickle.HIGHEST_PROTOCOL)
