@@ -11,7 +11,7 @@ import sys
 # Base directories
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 POP_DATA_DIR = os.path.join(SCRIPT_DIR, "..", "data", "population_data")
-LOG_FILE = os.path.join(SCRIPT_DIR, "..", "datacoll_log.txt")
+LOG_FILE = os.path.join(SCRIPT_DIR, "datacoll_log.txt")
 
 # Custom class to write to both terminal and file
 class Logger:
