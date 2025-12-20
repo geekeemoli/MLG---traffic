@@ -1,0 +1,19 @@
+{
+    "RAND_SEED": 42,
+    "NUM_CITIES": null,
+    "NUM_HIGHWAY_CLASSES": 7,
+    "VAL_RATIO": 0.1,
+    "TEST_RATIO": 0.0,
+    "MODEL": "xgb_baseline",
+    "N_MODELS": 1,
+    "HIDDEN_DIM": 64,
+    "NUM_LAYERS": 3,
+    "NUM_HEADS": 4,
+    "DROPOUT": 0,
+    "RESULTS_DIR": "./result_xgb_baseline_v3",
+    "LEARNING_RATE": 0.01,
+    "WEIGHT_DECAY": 1e-05,
+    "NUM_EPOCHS": 500,
+    "MODEL_SAVE_PATH": "./result_xgb_baseline_v3/model.pth",
+    "LOGS_FILE": "./result_xgb_baseline_v3/training_log.txt"
+}

@@ -8,6 +8,10 @@ import os
 from tqdm import tqdm
 import json
 
+# libraries for XGBoost baseline:
+import numpy as np
+from xgboost import XGBClassifier
+
 from prep_dataset import load_dataset
 
 # --------------------------------------------------------
@@ -22,15 +26,15 @@ VAL_RATIO = 0.1
 TEST_RATIO = 0.0
 
 # model specific:
-MODEL="mlp_baseline"
-N_MODELS = 1                    # number of GAT models in the ensemble
+MODEL="gat_ensemble"            # options: "gat_ensemble", "mlp_baseline", "xgb_baseline"
+N_MODELS = 5                    # number of GAT models in the ensemble
 HIDDEN_DIM = 64
 NUM_LAYERS = 3
 NUM_HEADS = 4
 DROPOUT = 0
 
 # training specific:
-RESULTS_DIR = './result_mlp_baseline_v1'
+RESULTS_DIR = './result_gat_ensemble_x5'
 LEARNING_RATE = 1e-2
 WEIGHT_DECAY = 1e-5
 NUM_EPOCHS = 500
@@ -281,6 +285,118 @@ def create_mlp_baseline_model(dataset):
 # --------------------------------------------------------
 
 # --------------------------------------------------------
+#region XGBoost Baseline - tabular training on node features
+# --------------------------------------------------------
+def graph_to_tabular(graph, split_mask, epsilon=0.02):
+    """
+    Convert one PyG graph into tabular X,y,(optional)sample_weight for nodes in split_mask.
+    Label: jam=1 if correlation < 0, else 0. Ignores nodes with correlation == 0 (no traffic data).
+    """
+    mask = split_mask & (graph.correlation != 0)
+
+    X = graph.x[mask].detach().cpu().numpy().astype(np.float32)
+    corr = graph.correlation[mask].detach().cpu()
+
+    y = (corr < 0).to(torch.int64).cpu().numpy()  # jam=1, nojam=0
+
+    # optional: mimic your loss weighting (confidence + class weight)
+    conf = (corr.abs() + epsilon)
+    conf = (conf / conf.mean().clamp_min(1e-12)).cpu().numpy().astype(np.float32)
+
+    # class weights similar to your LOSS_WEIGHT choice
+    # cls_w = np.where(y == 1, float(LOSS_WEIGHT), float(1.0 / LOSS_WEIGHT)).astype(np.float32)
+
+    w = conf
+    return X, y, w
+
+
+def build_tabular_dataset(dataset, split="train"):
+    Xs, ys, ws = [], [], []
+    for city, graph in dataset.items():
+        if split == "train":
+            m = graph.train_mask
+        elif split == "val":
+            m = graph.val_mask
+        elif split == "test":
+            m = graph.test_mask
+        else:
+            raise ValueError("split must be one of: train, val, test")
+
+        X, y, w = graph_to_tabular(graph, m)
+        if len(y) == 0:
+            continue
+        Xs.append(X); ys.append(y); ws.append(w)
+
+    if len(ys) == 0:
+        raise RuntimeError(f"No samples found for split={split}. Check masks/targets.")
+    return np.concatenate(Xs, axis=0), np.concatenate(ys, axis=0), np.concatenate(ws, axis=0)
+
+def compute_stats_from_probs(probs, y_true, threshold=0.5):
+    preds = (probs >= threshold).astype(np.int32)
+    y_true = y_true.astype(np.int32)
+
+    tp = int(((preds == 1) & (y_true == 1)).sum())
+    tn = int(((preds == 0) & (y_true == 0)).sum())
+    fp = int(((preds == 1) & (y_true == 0)).sum())
+    fn = int(((preds == 0) & (y_true == 1)).sum())
+    return {"tp": tp, "tn": tn, "fp": fp, "fn": fn}
+
+def train_xgboost_baseline(dataset):
+    # Build tabular train/val sets from existing masks
+    X_train, y_train, w_train = build_tabular_dataset(dataset, split="train")
+    X_val,   y_val,   w_val   = build_tabular_dataset(dataset, split="val")
+
+    # Useful for imbalanced data: scale_pos_weight = neg/pos
+    pos = (y_train == 1).sum()
+    neg = (y_train == 0).sum()
+    spw = float(neg / max(pos+neg, 1))
+
+    xgb = XGBClassifier(
+        objective="binary:logistic",
+        eval_metric="logloss",
+        n_estimators=2000,
+        learning_rate=0.03,
+        max_depth=6,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_lambda=1.0,
+        min_child_weight=1.0,
+        gamma=0.0,
+        # scale_pos_weight=spw,
+        random_state=RAND_SEED,
+        n_jobs=-1,
+        tree_method="hist",
+        early_stopping_rounds=50,
+    )
+
+    xgb.fit(
+        X_train, y_train,
+        sample_weight=w_train,
+        eval_set=[(X_val, y_val)],
+        sample_weight_eval_set=[w_val],
+        verbose=False,
+    )
+
+    # Evaluate using your stats style
+    val_probs = xgb.predict_proba(X_val)[:, 1]
+    val_stats = compute_stats_from_probs(val_probs, y_val, threshold=0.5)
+    val_acc = eval_metric(val_stats, method="accuracy")
+    val_f1 = eval_metric(val_stats, method="f1")
+    
+    with open(f"{RESULTS_DIR}/xgb_baseline_eval.txt", "w") as f:
+        f.write(f"XGBoost baseline: Val Acc={val_acc:.4f}, Val F1={val_f1:.4f}, (TP,FP,TN,FN)=({val_stats['tp']},{val_stats['fp']},{val_stats['tn']},{val_stats['fn']})\n")
+
+    return xgb
+
+def save_xgb_model(model, save_path):
+    # xgboost wants its own save format
+    model.save_model(save_path)
+    print(f"XGBoost model saved to {save_path}")
+
+#endregion
+# --------------------------------------------------------
+
+# --------------------------------------------------------
 #region Training setup - setup_training(dataset), loss_fn(...), eval_metric(...)
 # --------------------------------------------------------
 def setup_training(dataset, create_model):
@@ -418,6 +534,15 @@ def print_dataset_stats(dataset):
 # --------------------------------------------------------
 
 # --------------------------------------------------------
+#region Save the trained model
+# --------------------------------------------------------
+def save_model(model, save_path):
+    torch.save(model.state_dict(), save_path)
+    print(f"Model saved to {save_path}")
+#endregion
+# --------------------------------------------------------
+
+# --------------------------------------------------------
 #region Training loop - train(dataset, log_file=None)
 # --------------------------------------------------------
 def train(dataset, create_model, log_file=None):
@@ -470,15 +595,14 @@ def train(dataset, create_model, log_file=None):
 
 #endregion
 # --------------------------------------------------------
-create_model = create_gat_model if MODEL == "gat_ensemble" else create_mlp_baseline_model
-trained_model = train(dataset, create_model=create_model, log_file=LOGS_FILE)
-
-# --------------------------------------------------------
-#region Save the trained model
-# --------------------------------------------------------
-def save_model(model, save_path):
-    torch.save(model.state_dict(), save_path)
-    print(f"Model saved to {save_path}")
-#endregion
-# --------------------------------------------------------
-save_model(trained_model, MODEL_SAVE_PATH)
+if MODEL == "gat_ensemble":
+    trained_model = train(dataset, create_model=create_gat_model, log_file=LOGS_FILE)
+    save_model(trained_model, MODEL_SAVE_PATH)
+elif MODEL == "mlp_baseline":
+    trained_model = train(dataset, create_model=create_mlp_baseline_model, log_file=LOGS_FILE)
+    save_model(trained_model, MODEL_SAVE_PATH)
+elif MODEL == "xgb_baseline":
+    trained_model = train_xgboost_baseline(dataset)
+    save_xgb_model(trained_model, MODEL_SAVE_PATH.replace(".pth", ".json"))
+else:
+    raise ValueError(f"Unknown MODEL={MODEL}")
