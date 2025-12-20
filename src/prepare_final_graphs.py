@@ -12,6 +12,7 @@ from io import StringIO
 import math
 import gzip
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def load_correlation_data(correlation_file: str = "correlations.csv") -> pd.DataFrame:
     """
@@ -26,10 +27,8 @@ def load_correlation_data(correlation_file: str = "correlations.csv") -> pd.Data
     """
     df = pd.read_csv(correlation_file)
     
-    # Select only detector_id and correlation_ma
     df = df[['detector_id', 'correlation_ma']].copy()
     
-    # Remove any NaN correlations
     df = df.dropna(subset=['correlation_ma'])
     
     print(f"Loaded {len(df)} detector correlations")
@@ -117,7 +116,6 @@ def line_graph_to_osmnx_primal(G_roads):
     for (u, v, k), attrs in G_roads.nodes(data=True):
         G.add_edge(u, v, key=k, **dict(attrs))
 
-    # set crs
     if "crs" in G_roads.graph:
         G.graph["crs"] = G_roads.graph["crs"]
     else:
@@ -126,15 +124,14 @@ def line_graph_to_osmnx_primal(G_roads):
     return G
 
 def create_road_graphs_with_labels(
-    detector_coords_file = "data/traffic_data/detectors_public.csv",
-    correlation_file = "analyse_utd19/all_correlations/correlations.csv",
+    detector_coords_file = os.path.join(SCRIPT_DIR, "..", "data", "traffic_data", "detectors_public.csv"),
+    correlation_file = os.path.join(SCRIPT_DIR, "..", "analyse_utd19", "all_correlations", "correlations.csv"),
     cities = all_cities_list,
 ):    
-    # Load detector coordinates
+    
     detectors_df = pd.read_csv(detector_coords_file)
     print(f"Loaded {len(detectors_df)} detector coordinates")
     
-    # Load correlations
     correlations_df = load_correlation_data(correlation_file)
     
     # Merge coordinates with correlations
@@ -179,7 +176,7 @@ def create_road_graphs_with_labels(
         
         # LOAD GRAPH WITH POPULATION DENSITY (LINE GRAPH)
         print("Loading road graph from gpickle file wtih population density...")
-        og_graph_file_path = os.path.join("data", "graphs", f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
+        og_graph_file_path = os.path.join(SCRIPT_DIR, "..","data", "graphs", f"{city.replace(', ', '_').replace(' ', '_')}_road_graph_with_popdensity.gpickle")
         with open(og_graph_file_path, "rb") as f:
             og_graph_with_popdensity = pickle.load(f)
 
@@ -416,8 +413,8 @@ if __name__ == "__main__":
     try:
         # Create graphs with y labels
         results = create_road_graphs_with_labels(
-            detector_coords_file="data/traffic_data/detectors_public.csv",
-            correlation_file="analyse_utd19/all_correlations/correlations.csv",
+            detector_coords_file=os.path.join(SCRIPT_DIR, "..", "data", "traffic_data", "detectors_public.csv"),
+            correlation_file=os.path.join(SCRIPT_DIR, "..", "analyse_utd19", "all_correlations", "correlations.csv"),
             # cities=["Graz, Austria"], # For testing, process only one city
             cities=all_cities_list
             # cities=[all_cities_list[0]], # For testing, process only one city
@@ -430,7 +427,7 @@ if __name__ == "__main__":
             print("\n" + "="*70)
             print("SAVING DATA")
             print("="*70)
-            save_graphs_and_labels(results, output_dir="data/final_graphs")
+            save_graphs_and_labels(results, output_dir=os.path.join(SCRIPT_DIR, "..", "data", "final_graphs"))
             
             # Show summary
             print("\n" + "="*70)
@@ -446,9 +443,9 @@ if __name__ == "__main__":
             print("="*70)
             
     except FileNotFoundError as e:
-        print(f"\n❌ ERROR: File not found - {e}")
+        print(f"\n ERROR: File not found - {e}")
         print("Make sure 'detectors_public.csv' and 'correlations.csv' are in the same directory.")
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n ERROR: {e}")
         import traceback
         traceback.print_exc()
