@@ -1,3 +1,8 @@
+"""
+Visualize detector roads with model predictions vs actual traffic data.
+(This script was generated with the assistance of GitHub Copilot)
+"""
+
 import torch
 import torch.nn as nn
 import gzip
@@ -6,7 +11,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from torch_geometric.utils import from_networkx
-
 
 CITY = "Melbourne_Australia"
 MODEL_PATH = "../train/result_gat_ensemble_x5/model.pth"
