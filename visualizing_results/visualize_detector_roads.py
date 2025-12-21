@@ -8,16 +8,16 @@ import matplotlib.pyplot as plt
 from torch_geometric.utils import from_networkx
 
 
-CITY = "Los_Angeles_USA"
+CITY = "Melbourne_Australia"
 MODEL_PATH = "../train/result_gat_ensemble_x5/model.pth"
 GRAPH_PATH = f"../data/final_graphs/{CITY}_graph.pkl.gz"
 GEOM_GRAPH_PATH = f"../data/graphs/{CITY}_road_graph_with_popdensity.gpickle"
 
 CITY_CENTER = {
-    "west": -118.33,
-    "east": -118.20,
-    "south": 33.99,
-    "north": 34.08
+    "west": 144.90,
+    "east": 145.05,
+    "south": -37.85,
+    "north": -37.75
 }
 
 MODEL_TYPE = "gat_ensemble"
