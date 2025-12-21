@@ -14,16 +14,12 @@ import matplotlib.colors as mcolors
 from torch_geometric.utils import from_networkx
 from shapely.geometry import LineString, Point
 
-# ============================================================
-# Configuration
-# ============================================================
+
 CITY = "Graz_Austria"
-MODEL_PATH = "../train/result_gat_ensemble_x5/model.pth"  # Update this path to your model
+MODEL_PATH = "../train/result_gat_ensemble_x5/model.pth"
 GRAPH_PATH = f"../data/final_graphs/{CITY}_graph.pkl.gz"
-# Intermediate graph with geometry (for visualization)
 GEOM_GRAPH_PATH = f"../data/graphs/{CITY}_road_graph_with_popdensity.gpickle"
 
-# Graz bounding box (full city)
 CITY_CENTER = {
     "west": 15.35,
     "east": 15.52,
@@ -31,18 +27,14 @@ CITY_CENTER = {
     "north": 47.12
 }
 
-# Model hyperparameters (must match training)
-MODEL_TYPE = "gat_ensemble"  # "gat_ensemble" or "mlp_baseline"
-N_MODELS = 5                 # Number of GAT models in ensemble
+MODEL_TYPE = "gat_ensemble"
+N_MODELS = 5 
 NUM_HIGHWAY_CLASSES = 7
 HIDDEN_DIM = 64
 NUM_LAYERS = 3
 NUM_HEADS = 4
 DROPOUT = 0
 
-# ============================================================
-# Load graph
-# ============================================================
 def load_graph_nx(path):
     with gzip.open(path, "rb") as f:
         return pickle.load(f)
@@ -57,9 +49,6 @@ def load_graph_pyg(path):
     graph_pyg = from_networkx(graph_nx)
     return graph_pyg, graph_nx
 
-# ============================================================
-# Feature Builder (must match training)
-# ============================================================
 class FeatureBuilder(nn.Module):
     def __init__(self, num_highway_classes: int):
         super().__init__()
@@ -88,9 +77,6 @@ class FeatureBuilder(nn.Module):
         data.x = torch.cat([num_feats, multi_hot_highway], dim=-1)
         return data
 
-# ============================================================
-# GAT Model (must match training)
-# ============================================================
 from torch_geometric.nn.models import GAT
 
 class GATModelEnsemble(nn.Module):
@@ -117,9 +103,6 @@ class GATModelEnsemble(nn.Module):
         out = torch.mean(torch.stack(out), dim=0)
         return out
 
-# ============================================================
-# MLP Model (must match training)
-# ============================================================
 class MLPBaselineModel(nn.Module):
     def __init__(self, in_channels, hidden_channels=64, num_layers=3, dropout=0.2):
         super(MLPBaselineModel, self).__init__()
@@ -142,9 +125,6 @@ class MLPBaselineModel(nn.Module):
         out = self.mlp(x).squeeze()
         return out
 
-# ============================================================
-# Get road center coordinates
-# ============================================================
 def get_road_center(node_data):
     """Extract center coordinates from node geometry."""
     geom = node_data.get('geometry')
@@ -166,9 +146,6 @@ def get_road_coords(node_data):
         return lons, lats
     return None, None
 
-# ============================================================
-# Filter to central area
-# ============================================================
 def is_in_bounds(lon, lat, bounds):
     """Check if coordinates are within bounding box."""
     if lon is None or lat is None:
@@ -176,15 +153,11 @@ def is_in_bounds(lon, lat, bounds):
     return (bounds["west"] <= lon <= bounds["east"] and 
             bounds["south"] <= lat <= bounds["north"])
 
-# ============================================================
-# Main visualization
-# ============================================================
 def main():
     print(f"Loading graph from {GRAPH_PATH}...")
     graph_pyg, graph_nx = load_graph_pyg(GRAPH_PATH)
     print(f"Graph has {graph_pyg.num_nodes} nodes and {graph_pyg.num_edges} edges")
     
-    # Load geometry graph for visualization
     print(f"Loading geometry from {GEOM_GRAPH_PATH}...")
     if os.path.exists(GEOM_GRAPH_PATH):
         geom_graph = load_geom_graph(GEOM_GRAPH_PATH)
@@ -193,12 +166,10 @@ def main():
         print(f"WARNING: Geometry graph not found at {GEOM_GRAPH_PATH}")
         print("Cannot visualize without geometry data.")
         return
-    
-    # Build features
+
     feature_builder = FeatureBuilder(num_highway_classes=NUM_HIGHWAY_CLASSES)
     graph_pyg = feature_builder(graph_pyg)
-    
-    # Debug: Check actual coordinate range from geometry graph
+
     geom_node_ids = list(geom_graph.nodes())
     sample_lons, sample_lats = [], []
     for node_id in geom_node_ids[:100]:
@@ -213,7 +184,6 @@ def main():
         print(f"  Longitude: {min(sample_lons):.4f} to {max(sample_lons):.4f}")
         print(f"  Latitude:  {min(sample_lats):.4f} to {max(sample_lats):.4f}")
     
-    # Load model
     print(f"\nLoading model from {MODEL_PATH}...")
     in_channels = graph_pyg.x.size(-1)
     
@@ -243,7 +213,6 @@ def main():
         print("Will visualize only ground truth data.")
         model = None
     
-    # Get predictions
     if model is not None:
         model.eval()
         with torch.no_grad():
@@ -252,27 +221,20 @@ def main():
     else:
         predictions = None
     
-    # Get ground truth (correlation values)
     correlations = graph_pyg.correlation.numpy()
     
-    # Collect data for visualization
-    # Use node IDs from final graph, but get geometry from geometry graph
     node_ids = list(graph_nx.nodes())
-    
-    # Create mapping from node_id to index for predictions/correlations
+
     node_to_idx = {node_id: i for i, node_id in enumerate(node_ids)}
-    
-    # Filter and collect road data
+
     roads_data = []
     for node_id in geom_graph.nodes():
-        # Get geometry from geom_graph
         geom_data = geom_graph.nodes[node_id]
         lon, lat = get_road_center(geom_data)
         
         if not is_in_bounds(lon, lat, CITY_CENTER):
             continue
-        
-        # Get prediction/correlation from final graph if node exists
+
         if node_id in node_to_idx:
             idx = node_to_idx[node_id]
             correlation = correlations[idx]
@@ -299,7 +261,6 @@ def main():
     
     print(f"\nFound {len(roads_data)} roads in {CITY.replace('_', ', ')} area")
     
-    # Count statistics
     with_detector = [r for r in roads_data if r['has_detector']]
     actual_jams = [r for r in with_detector if r['is_jam_actual']]
     
@@ -310,30 +271,24 @@ def main():
         predicted_jams = [r for r in roads_data if r['is_jam_predicted']]
         print(f"Predicted traffic jams: {len(predicted_jams)}")
         
-        # Accuracy on detector roads
         if len(with_detector) > 0:
             correct = sum(1 for r in with_detector if r['is_jam_actual'] == r['is_jam_predicted'])
             print(f"Accuracy on detector roads: {correct}/{len(with_detector)} = {100*correct/len(with_detector):.1f}%")
         else:
             print("No detector roads in this area to compute accuracy.")
     
-    # ============================================================
-    # Create visualization
-    # ============================================================
     fig, axes = plt.subplots(1, 2 if predictions is not None else 1, figsize=(16 if predictions is not None else 8, 8))
     
     if predictions is None:
         axes = [axes]
     
-    # Color scheme
-    color_no_data = '#cccccc'      # Gray for no detector data
-    color_no_jam = '#2ecc71'       # Green for no jam
-    color_jam = '#e74c3c'          # Red for jam
+    color_no_data = '#cccccc'
+    color_no_jam = '#2ecc71'
+    color_jam = '#e74c3c'       
     
     def plot_roads(ax, roads, use_predictions=False, title=""):
         ax.set_facecolor('#1a1a2e')
         
-        # Plot all roads first (no data = gray)
         for road in roads:
             if road['lons'] is None:
                 continue
@@ -374,7 +329,6 @@ def main():
         ax.set_title(title, fontsize=14, fontweight='bold')
         ax.set_aspect('equal')
         
-        # Legend
         from matplotlib.lines import Line2D
         legend_elements = [
             Line2D([0], [0], color=color_jam, linewidth=2, label='Traffic Jam'),
@@ -383,11 +337,9 @@ def main():
         ]
         ax.legend(handles=legend_elements, loc='upper right')
     
-    # Plot actual (detector) data
     plot_roads(axes[0], roads_data, use_predictions=False, 
                title=f"Actual Traffic (from UTD19 Detectors)\n{len(with_detector)} roads with data, {len(actual_jams)} jams")
     
-    # Plot predictions
     if predictions is not None:
         predicted_jams_count = sum(1 for r in roads_data if r['is_jam_predicted'])
         plot_roads(axes[1], roads_data, use_predictions=True,
@@ -400,10 +352,7 @@ def main():
     plt.savefig(output_path, dpi=200, facecolor='white')
     print(f"\nVisualization saved to: {output_path}")
     plt.show()
-
-    # ============================================================
-    # Create additional plot: Correlation distribution
-    # ============================================================
+    
     detector_correlations = [r['correlation'] for r in roads_data if r['has_detector']]
     
     if detector_correlations:
