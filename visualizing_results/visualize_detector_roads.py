@@ -8,16 +8,23 @@ import matplotlib.pyplot as plt
 from torch_geometric.utils import from_networkx
 
 
-CITY = "Melbourne_Australia"
+# CITY = "Melbourne_Australia"
+CITY = "Graz_Austria"
 MODEL_PATH = "../train/result_gat_ensemble_x5/model.pth"
 GRAPH_PATH = f"../data/final_graphs/{CITY}_graph.pkl.gz"
 GEOM_GRAPH_PATH = f"../data/graphs/{CITY}_road_graph_with_popdensity.gpickle"
 
+# CITY_CENTER = {
+#     "west": 144.90,
+#     "east": 145.05,
+#     "south": -37.85,
+#     "north": -37.75
+# }
 CITY_CENTER = {
-    "west": 144.90,
-    "east": 145.05,
-    "south": -37.85,
-    "north": -37.75
+    "west": 15.35,
+    "east": 15.52,
+    "south": 47.01,
+    "north": 47.12
 }
 
 MODEL_TYPE = "gat_ensemble"
@@ -283,7 +290,7 @@ def main():
         print(f"  FP (false alarm): {fp}")
         print(f"  FN (missed jam): {fn}")
     
-    fig, axes = plt.subplots(1, 3, figsize=(20, 7))
+    fig, axes = plt.subplots(1, 3, figsize=(20, 9))
     
     color_no_jam = '#2ecc71'      
     color_jam = '#e74c3c'          
@@ -345,24 +352,24 @@ def main():
         ax.legend(handles=legend_elements, loc='upper right', fontsize=9)
     
     plot_with_background(axes[0], all_roads, detector_roads, use_predictions=False, 
-                         title=f"Actual Traffic (UTD19 Detectors)\n{len(detector_roads)} detector roads, {len(actual_jams)} jams")
+                         title=f"Actual Traffic (UTD19 Detectors)")
     
     plot_with_background(axes[1], all_roads, detector_roads, use_predictions=True,
-                         title=f"Model Predictions\n{len(predicted_jams)} predicted jams")
+                         title=f"Model Predictions")
     
     plot_with_background(axes[2], all_roads, detector_roads, show_correctness=True,
-                         title=f"Prediction Accuracy\n{correct}/{len(detector_roads)} correct ({accuracy:.1f}%)")
+                         title=f"Prediction Accuracy")
     
     fig.suptitle(f'Traffic Jam Detection - {CITY.replace("_", ", ")}', fontsize=16, fontweight='bold', y=0.98)
     
-    metrics_text = f"Accuracy: {accuracy:.1f}%    |    Precision: {precision:.3f}    |    Recall: {recall:.3f}    |    F1 Score: {f1:.3f}"
-    fig.text(0.5, 0.02, metrics_text, ha='center', va='bottom', fontsize=12, fontweight='bold',
-             bbox=dict(boxstyle='round', facecolor='#f0f0f0', edgecolor='#cccccc', alpha=0.9))
+    # metrics_text = f"Accuracy: {accuracy:.1f}%    |    Precision: {precision:.3f}    |    Recall: {recall:.3f}    |    F1 Score: {f1:.3f}"
+    # fig.text(0.5, 0.02, metrics_text, ha='center', va='bottom', fontsize=12, fontweight='bold',
+    #          bbox=dict(boxstyle='round', facecolor='#f0f0f0', edgecolor='#cccccc', alpha=0.9))
     
     plt.subplots_adjust(top=0.90, bottom=0.10, left=0.04, right=0.98, wspace=0.12)
     
-    output_path = f"{CITY}_detector_roads_comparison.png"
-    plt.savefig(output_path, dpi=200, facecolor='white')
+    output_path = f"{CITY}_detector_roads_comparison_without_metrics.png"
+    plt.savefig(output_path, dpi=300, facecolor='white')
     print(f"\nVisualization saved to: {output_path}")
     plt.show()
 
