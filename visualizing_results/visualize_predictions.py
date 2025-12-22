@@ -1,6 +1,7 @@
 """
-Visualize model predictions vs actual detector data for London.
+Visualize model predictions vs actual detector data.
 Creates a map showing predicted traffic jams vs actual measurements.
+(This script was generated with the assistance of GitHub Copilot)
 """
 
 import torch
