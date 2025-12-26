@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torch_geometric.loader import DataLoader
-from torch_geometric.nn.models import GAT
+from torch_geometric.nn.models import GAT, GCN
 import os
 from tqdm import tqdm
 import json
@@ -26,19 +26,20 @@ VAL_RATIO = 0.1
 TEST_RATIO = 0.0
 
 # model specific:
-MODEL="gat_ensemble"            # options: "gat_ensemble", "mlp_baseline", "xgb_baseline"
-N_MODELS = 5                    # number of GAT models in the ensemble
+MODEL="gcn_ensemble"            # options: "gat_ensemble", "gcn_ensemble", "mlp_baseline", "xgb_baseline"
+N_MODELS = 1                    # number of GAT models in the ensemble
 HIDDEN_DIM = 64
 NUM_LAYERS = 3
 NUM_HEADS = 4
 DROPOUT = 0
 
 # training specific:
-RESULTS_DIR = './result_gat_ensemble_x5'
+RESULTS_DIR = './result_gcn_ensemble_x1'
 LEARNING_RATE = 1e-2
 WEIGHT_DECAY = 1e-5
 NUM_EPOCHS = 500
 LOSS_WEIGHT = 2.5 # weight for the positive class (traffic jam) in the loss function
+# LOSS_WEIGHT = 1 # used this for results_gat_ensemble_x1_no_loss_weight version
 MODEL_SAVE_PATH = f"{RESULTS_DIR}/model.pth"
 LOGS_FILE = f"{RESULTS_DIR}/training_log.txt"
 
@@ -203,17 +204,30 @@ class GATModelEnsemble(nn.Module):
     def __init__(self, n_models, in_channels, out_channels, hidden_channels=64, num_layers=3, heads=4, dropout=0.2):
         super(GATModelEnsemble, self).__init__()
         
-        self.models = nn.ModuleList([
-            GAT(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                hidden_channels=hidden_channels,
-                num_layers=num_layers,
-                heads=heads,
-                dropout=dropout,
-                v2=True,
-            ) for _ in range(n_models)
-        ])
+        if MODEL == "gat_ensemble": 
+            self.models = nn.ModuleList([
+                GAT(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    hidden_channels=hidden_channels,
+                    num_layers=num_layers,
+                    heads=heads,
+                    dropout=dropout,
+                    v2=True,
+                ) for _ in range(n_models)
+            ])
+        elif MODEL == "gcn_ensemble":
+            self.models = nn.ModuleList([
+                GCN(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    hidden_channels=hidden_channels,
+                    num_layers=num_layers,
+                    dropout=dropout,
+                ) for _ in range(n_models)
+            ])
+        else:
+            raise ValueError(f"Unknown MODEL={MODEL} for GATModelEnsemble")
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
@@ -584,8 +598,11 @@ def train(dataset, create_model, log_file=None):
         avg_train_loss = total_train_loss.item() / num_cities
         avg_val_loss = total_val_loss / num_cities
         print(
-            f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (TP, FP, TN, FN)=({summarised_train_stats['tp']}, {summarised_train_stats['fp']}, {summarised_train_stats['tn']}, {summarised_train_stats['fn']}), Val Loss: {avg_val_loss:.4f} (TP, FP, TN, FN)=({summarised_val_stats['tp']}, {summarised_val_stats['fp']}, {summarised_val_stats['tn']}, {summarised_val_stats['fn']})",
+            f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (TP, FP, TN, FN)=({summarised_train_stats['tp']}, {summarised_train_stats['fp']}, {summarised_train_stats['tn']}, {summarised_train_stats['fn']}), Val Loss: {avg_val_loss:.4f} (TP, FP, TN, FN)=({summarised_val_stats['tp']}, {summarised_val_stats['fp']}, {summarised_val_stats['tn']}, {summarised_val_stats['fn']}), f1={eval_metric(summarised_val_stats, method='f1'):.4f}",
             file=log_f
+        )
+        print(
+            f"Epoch {epoch:03d}: Train Loss: {avg_train_loss:.4f} (TP, FP, TN, FN)=({summarised_train_stats['tp']}, {summarised_train_stats['fp']}, {summarised_train_stats['tn']}, {summarised_train_stats['fn']}), Val Loss: {avg_val_loss:.4f} (TP, FP, TN, FN)=({summarised_val_stats['tp']}, {summarised_val_stats['fp']}, {summarised_val_stats['tn']}, {summarised_val_stats['fn']}), f1={eval_metric(summarised_val_stats, method='f1'):.4f}"
         )
     
     if log_f is not None:
@@ -595,7 +612,7 @@ def train(dataset, create_model, log_file=None):
 
 #endregion
 # --------------------------------------------------------
-if MODEL == "gat_ensemble":
+if MODEL == "gat_ensemble" or MODEL == "gcn_ensemble":
     trained_model = train(dataset, create_model=create_gat_model, log_file=LOGS_FILE)
     save_model(trained_model, MODEL_SAVE_PATH)
 elif MODEL == "mlp_baseline":
